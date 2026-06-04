@@ -1,0 +1,17 @@
+{
+  "title": "Super Aventura",
+  "start": "Iniciar Jogo",
+  "language": "Idioma",
+  "controls": "Setas ou WASD para mover, ESPAÇO para saltar, ESC para pausa",
+  "score": "Pontuação",
+  "lives": "Vidas",
+  "gameover": "Fim de Jogo",
+  "victory": "Vitória!",
+  "restart": "R para recomeçar",
+  "finalScore": "Pontuação final",
+  "level": "Nível",
+  "paused": "Pausa",
+  "resume": "Continuar",
+  "restartLevel": "Reiniciar nível",
+  "backToMenu": "Menu inicial"
+}

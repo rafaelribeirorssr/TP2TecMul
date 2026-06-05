@@ -171,6 +171,7 @@ export class GameScene extends Phaser.Scene {
     this.invincible          = false
     this.transitioning       = false
     this.movingPlatformList  = []
+    this.coinsCollected      = 0   // moedas apanhadas NESTE nível (reinicia a cada nível)
 
     const W = lvl.worldWidth
     const H = 500
@@ -291,7 +292,7 @@ this.drawBackground(lvl, W, H)
       stroke: '#000000', strokeThickness: 3
     }).setScrollFactor(0).setDepth(20)
 
-    this.coinsText = this.add.text(16, 72, `🪙 ${lvl.coins.length}`, {
+    this.coinsText = this.add.text(16, 72, `🪙 ${this.coinsCollected}`, {
       fontSize: '18px', fill: '#FFD700',
       stroke: '#000000', strokeThickness: 3
     }).setScrollFactor(0).setDepth(20)
@@ -568,9 +569,10 @@ this.drawBackground(lvl, W, H)
   collectCoin(player, coin) {
     coin.destroy()
     this.score += 10
+    this.coinsCollected += 1
     const t = getLang()
     this.scoreText.setText(`${t.score}: ${this.score}`)
-    this.coinsText.setText(`🪙 ${this.coins.countActive()}`)
+    this.coinsText.setText(`🪙 ${this.coinsCollected}`)
   }
 
   enterDoor(player, door) {

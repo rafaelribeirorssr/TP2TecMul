@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import pt from '../locales/pt.json'
 import en from '../locales/en.json'
-import { SKINS } from '../assetConfig.js'
+import { SKINS, SPRITE_FRAMES } from '../assetConfig.js'
 
 const langs = { pt, en }
 let currentLang = 'pt'
@@ -65,10 +65,20 @@ export class MenuScene extends Phaser.Scene {
       btn.on('pointerout',  () => { if (activeSkinIndex !== i) btn.setStyle({ fill: '#ffffff' }) })
       btn.on('pointerdown', () => { activeSkinIndex = i; this.scene.restart() })
 
-      // Preview: imagem carregada ou quadrado colorido
+      // Preview: recorta o frame "idle" da spritesheet (não a folha inteira)
       const previewColors = [0xcc0000, 0x111111, 0x6677aa, 0x6600cc]
       if (skin.url && this.textures.exists(skin.key)) {
-        this.add.image(skinXs[i], 320, skin.key).setDisplaySize(32, 40).setOrigin(0.5)
+        const tex   = this.textures.get(skin.key)
+        const idle  = SPRITE_FRAMES[skin.key]?.idle
+        const fname = 'menu_idle'
+        if (idle && !tex.has(fname)) tex.add(fname, 0, idle.x, idle.y, idle.w, idle.h)
+
+        const img = tex.has(fname)
+          ? this.add.image(skinXs[i], 320, skin.key, fname)
+          : this.add.image(skinXs[i], 320, skin.key)
+        // Escala mantendo a proporção, dentro de uma caixa de ~32x42 px
+        const s = Math.min(32 / img.width, 42 / img.height)
+        img.setScale(s).setOrigin(0.5)
       } else {
         const g = this.add.graphics()
         g.fillStyle(previewColors[i], selected ? 1 : 0.5)

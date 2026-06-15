@@ -51,31 +51,33 @@ export const BG_LAYERS = [
 // Skins do personagem — 4 slots
 // Se url estiver vazio, usa o design procedural padrão do slot
 export const SKINS = [
-  { key: 'skin_img0', url: '/Mario.png',       label_pt: 'Mario',  label_en: 'Mario'   },
-  { key: 'skin_img1', url: '/Small_Mario.png', label_pt: 'Mini',   label_en: 'Mini'    },
-  { key: 'skin_img2', url: '',                 label_pt: 'Robô',   label_en: 'Robot'   },
-  { key: 'skin_img3', url: '',                 label_pt: 'Mago',   label_en: 'Wizard'  },
+  { key: 'skin_img0', url: '/yi_mario.png',   label_pt: 'Mario',   label_en: 'Mario'   },
+  { key: 'skin_img1', url: '/yi_luigi.png',   label_pt: 'Luigi',   label_en: 'Luigi'   },
+  { key: 'skin_img2', url: '/yi_wario.png',   label_pt: 'Wario',   label_en: 'Wario'   },
+  { key: 'skin_img3', url: '/yi_waluigi.png', label_pt: 'Waluigi', label_en: 'Waluigi' },
 ]
 
 // Frames extraídos das spritesheets (coordenadas em píxeis na imagem original)
 // idle/walk/jump: { x, y, w, h } — coordenadas do frame na spritesheet
+//
+// As folhas yi_*.png foram geradas a partir da imagem original
+// "Mario, Luigi, Wario & Waluigi (Yoshi's Island-Style).png": fundo removido,
+// frames todos virados para a esquerda, dispostos em 5 células de 27x33 px:
+// [idle | walk0 | walk1 | walk2 | jump]
+const YI_FRAMES = {
+  display: { w: 40, h: 50 },
+  idle: { x: 0, y: 0, w: 27, h: 33 },
+  walk: [
+    { x: 27,  y: 0, w: 27, h: 33 },
+    { x: 54,  y: 0, w: 27, h: 33 },
+    { x: 81,  y: 0, w: 27, h: 33 },
+  ],
+  jump: { x: 108, y: 0, w: 27, h: 33 },
+}
+
 export const SPRITE_FRAMES = {
-  'skin_img0': { // Mario.png (876x160) — medido em píxeis
-    idle: { x: 0,   y: 36, w: 15, h: 28 },
-    walk: [
-      { x: 112, y: 36, w: 16, h: 28 },
-      { x: 128, y: 36, w: 15, h: 28 },
-      { x: 143, y: 36, w: 16, h: 28 },
-    ],
-    jump: { x: 32, y: 83, w: 21, h: 28 },
-  },
-  'skin_img1': { // Small_Mario.png (832x232) — medido em píxeis
-    idle: { x: 16, y: 18, w: 17, h: 22 },
-    walk: [
-      { x: 16,  y: 18, w: 17, h: 22 },
-      { x: 112, y: 18, w: 11, h: 22 },
-      { x: 123, y: 18, w: 11, h: 22 },
-    ],
-    jump: { x: 17, y: 41, w: 14, h: 30 },
-  },
+  'skin_img0': YI_FRAMES, // Mario
+  'skin_img1': YI_FRAMES, // Luigi
+  'skin_img2': YI_FRAMES, // Wario
+  'skin_img3': YI_FRAMES, // Waluigi
 }

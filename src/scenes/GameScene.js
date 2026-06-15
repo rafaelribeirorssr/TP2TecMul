@@ -406,8 +406,10 @@ export class GameScene extends Phaser.Scene {
     this.framesConfigured = this.setupSpriteFrames(playerKey)
     this.player = this.physics.add.sprite(100, startY, playerKey,
       this.framesConfigured ? 'idle' : undefined)
-    this.player.setDisplaySize(40, 50)
-    this.player.setBounce(0.1)
+    // Cada personagem tem o seu tamanho (o "Mini" é mais pequeno e proporcional).
+    const disp = SPRITE_FRAMES[playerKey]?.display || { w: 40, h: 50 }
+    this.player.setDisplaySize(disp.w, disp.h)
+    this.player.setBounce(0)   // sem bounce: evita o "tremor" do corpo a saltitar no chão
     this.player.setCollideWorldBounds(true)
     this.player.setDepth(5)
     this.physics.add.collider(this.player, this.platforms)
@@ -432,7 +434,9 @@ export class GameScene extends Phaser.Scene {
 
     // --- Câmara ---
     this.cameras.main.setBounds(0, 0, W, H)
-    this.cameras.main.startFollow(this.player, true, 0.1, 0.1)
+    // roundPixels=false: com o lerp suave, arredondar a píxeis fazia a câmara
+    // oscilar ±1px à volta do alvo, dando a sensação de "tremor" mesmo parado.
+    this.cameras.main.startFollow(this.player, false, 0.1, 0.1)
     this.cameras.main.fadeIn(600)
 
     // --- Lava: colisor de morte ---
@@ -502,9 +506,9 @@ export class GameScene extends Phaser.Scene {
       // Faixa mais escura no topo da relva
       this.add.rectangle(W / 2, H - 48, W, 6, 0x3a9918)
 
-      // Colisores do chão
+      // Colisores do chão (topo alinhado com a superfície da relva, p/ os pés não afundarem)
       for (let x = 0; x < W; x += 50) {
-        const tile = this.add.rectangle(x + 25, H - 20, 50, 40, 0x8B4513)
+        const tile = this.add.rectangle(x + 25, H - 29, 50, 40, 0x8B4513)
         tile.setAlpha(0)
         this.physics.add.existing(tile, true)
         this.platforms.add(tile)
@@ -525,9 +529,9 @@ export class GameScene extends Phaser.Scene {
       this.add.rectangle(W / 2, H - 40, W, 18, 0x555566)
       this.add.rectangle(W / 2, H - 48, W, 6, 0x666677)
 
-      // Colisores do chão
+      // Colisores do chão (topo alinhado com a superfície, p/ os pés não afundarem)
       for (let x = 0; x < W; x += 50) {
-        const tile = this.add.rectangle(x + 25, H - 20, 50, 40, 0x333344)
+        const tile = this.add.rectangle(x + 25, H - 29, 50, 40, 0x333344)
         tile.setAlpha(0)
         this.physics.add.existing(tile, true)
         this.platforms.add(tile)
@@ -940,8 +944,10 @@ export class GameScene extends Phaser.Scene {
       this.parallaxLayers.forEach(l => { l.tilePositionX = camX * l.parallaxFactor })
     }
 
-    if (left)       { this.player.body.setVelocityX(-220); this.player.setFlipX(true)  }
-    else if (right) { this.player.body.setVelocityX(220);  this.player.setFlipX(false) }
+    // Os sprites do Mário estão virados para a ESQUERDA na imagem original,
+    // por isso: andar à esquerda = sem flip; andar à direita = flip horizontal.
+    if (left)       { this.player.body.setVelocityX(-220); this.player.setFlipX(false) }
+    else if (right) { this.player.body.setVelocityX(220);  this.player.setFlipX(true)  }
     else            { this.player.body.setVelocityX(0) }
 
     if (jump && onGround) this.player.body.setVelocityY(-JUMP_VELOCITY)

@@ -1,11 +1,11 @@
 import Phaser from 'phaser'
-import { getLang, getActiveSkinIndex } from './MenuScene.js'
+import { getLang, getActiveSkinIndex, getActiveCharacter } from './MenuScene.js'
 import { BG_LAYERS, SKINS, SPRITE_FRAMES } from '../assetConfig.js'
 
-// Força do salto: quanto MAIOR o número, mais alto o salto.
-// 560 (valor antigo) era muito alto/flutuante; ~450 dá um salto mais normal.
-// Evita descer muito abaixo de ~420, senão pode não chegar a algumas plataformas.
-const JUMP_VELOCITY = 450
+// O salto e a velocidade já NÃO são fixos: cada personagem traz os seus valores
+// (jump/speed em assetConfig.js → SKINS). Lidos em init() para this.charJump /
+// this.charSpeed. Como referência, o salto ronda 450-590 e a velocidade 190-310.
+// Evita saltos abaixo de ~420, senão a personagem pode não chegar a algumas plataformas.
 
 const SKIN_CONFIGS = [
   { hat: 0xcc0000, hatBrim: 0xcc0000, face: 0xffcc99, eyes: 0x000000, detail: 0x6b3a2a, body: 0x1a3ccc, buttons: 0xffcc00, shoes: 0x4a2800 },
@@ -43,8 +43,9 @@ const LEVELS = [
     ],
     enemies: [
       { x: 600,  y: 420, patrol: 200 },
-      { x: 1200, y: 420, patrol: 200 },
+      { x: 1200, y: 420, patrol: 200, type: 'jumper' },
       { x: 1800, y: 420, patrol: 200 },
+      { x: 1500, y: 200, patrol: 250, type: 'flyer' },
     ],
     doorX: 2850,
   },
@@ -85,10 +86,16 @@ const LEVELS = [
     ],
     enemies: [
       { x: 500,  y: 420, patrol: 150 },
-      { x: 1000, y: 420, patrol: 150 },
+      { x: 1000, y: 420, patrol: 150, type: 'chaser' },
       { x: 1500, y: 420, patrol: 150 },
-      { x: 2200, y: 420, patrol: 150 },
+      { x: 2200, y: 420, patrol: 150, type: 'jumper' },
       { x: 3000, y: 420, patrol: 150 },
+      { x: 2600, y: 190, patrol: 300, type: 'flyer' },
+    ],
+    spikes: [
+      { x: 1750, y: 451, w: 70 },
+      { x: 2750, y: 451, w: 70 },
+      { x: 3550, y: 451, w: 70 },
     ],
     movingPlatforms: [
       { x: 1800, y: 320, w: 120, range: 150, speed: 60 },
@@ -113,22 +120,16 @@ const LEVELS = [
       { x: 520,  y: 320, w:  90 },
       { x: 750,  y: 370, w: 100 },
       { x: 980,  y: 290, w:  90 },
-      { x: 1220, y: 350, w: 100 },
       { x: 1480, y: 270, w:  90 },
       { x: 1720, y: 330, w: 100 },
-      { x: 1980, y: 260, w:  90 },
       { x: 2230, y: 320, w: 100 },
       { x: 2500, y: 250, w:  90 },
-      { x: 2760, y: 310, w: 100 },
       { x: 3020, y: 240, w:  90 },
       { x: 3280, y: 300, w: 100 },
-      { x: 3540, y: 230, w:  90 },
       { x: 3800, y: 290, w: 100 },
       { x: 4060, y: 220, w:  90 },
-      { x: 4320, y: 280, w: 100 },
       { x: 4580, y: 210, w:  90 },
       { x: 4840, y: 270, w: 100 },
-      { x: 5100, y: 200, w:  90 },
       { x: 5350, y: 260, w: 100 },
       { x: 5600, y: 190, w:  90 },
       { x: 5850, y: 250, w: 120 },
@@ -147,13 +148,27 @@ const LEVELS = [
     ],
     enemies: [
       { x: 600,  y: 360, patrol: 120 },
-      { x: 1100, y: 360, patrol: 120 },
+      { x: 1100, y: 360, patrol: 120, type: 'jumper' },
       { x: 1700, y: 360, patrol: 120 },
-      { x: 2400, y: 360, patrol: 120 },
+      { x: 2400, y: 360, patrol: 120, type: 'jumper' },
       { x: 3100, y: 360, patrol: 120 },
-      { x: 3800, y: 360, patrol: 120 },
+      { x: 3800, y: 360, patrol: 120, type: 'jumper' },
       { x: 4500, y: 360, patrol: 120 },
       { x: 5200, y: 360, patrol: 120 },
+      { x: 2000, y: 250, patrol: 400, type: 'flyer' },
+      { x: 4000, y: 240, patrol: 400, type: 'flyer' },
+    ],
+    spikes: [
+      { x: 150, y: 370, w: 40 },
+    ],
+    // Plataformas do caminho que agora são TEMPORÁRIAS: caem quando pisadas.
+    fallingPlatforms: [
+      { x: 1220, y: 350, w: 100 },
+      { x: 1980, y: 260, w:  90 },
+      { x: 2760, y: 310, w: 100 },
+      { x: 3540, y: 230, w:  90 },
+      { x: 4320, y: 280, w: 100 },
+      { x: 5100, y: 200, w:  90 },
     ],
     movingPlatforms: [
       { x: 1100, y: 310, w: 90, range: 120, speed:  90 },
@@ -179,25 +194,18 @@ const LEVELS = [
       { x: 370,  y: 350, w: 90 },
       { x: 640,  y: 310, w: 85 },
       { x: 900,  y: 360, w: 90 },
-      { x: 1160, y: 280, w: 85 },
       { x: 1440, y: 340, w: 90 },
       { x: 1720, y: 260, w: 85 },
-      { x: 2000, y: 320, w: 90 },
       { x: 2280, y: 240, w: 85 },
       { x: 2560, y: 300, w: 90 },
-      { x: 2840, y: 220, w: 85 },
       { x: 3120, y: 280, w: 90 },
       { x: 3400, y: 210, w: 85 },
-      { x: 3680, y: 270, w: 90 },
       { x: 3960, y: 200, w: 85 },
       { x: 4240, y: 260, w: 90 },
-      { x: 4520, y: 190, w: 85 },
       { x: 4800, y: 250, w: 90 },
       { x: 5080, y: 180, w: 85 },
-      { x: 5360, y: 240, w: 90 },
       { x: 5640, y: 270, w: 85 },
       { x: 5920, y: 210, w: 90 },
-      { x: 6200, y: 260, w: 85 },
       { x: 6480, y: 290, w: 90 },
       { x: 6760, y: 260, w: 120 },
     ],
@@ -216,16 +224,31 @@ const LEVELS = [
       { x: 6480, y: 250 },
     ],
     enemies: [
-      { x: 700,  y: 360, patrol: 110 },
+      { x: 700,  y: 360, patrol: 110, type: 'chaser' },
       { x: 1100, y: 360, patrol: 110 },
-      { x: 1700, y: 360, patrol: 110 },
+      { x: 1700, y: 360, patrol: 110, type: 'jumper' },
       { x: 2300, y: 360, patrol: 110 },
-      { x: 3000, y: 360, patrol: 110 },
+      { x: 3000, y: 360, patrol: 110, type: 'chaser' },
       { x: 3700, y: 360, patrol: 110 },
-      { x: 4400, y: 360, patrol: 110 },
+      { x: 4400, y: 360, patrol: 110, type: 'jumper' },
       { x: 5100, y: 360, patrol: 110 },
-      { x: 5800, y: 360, patrol: 110 },
+      { x: 5800, y: 360, patrol: 110, type: 'chaser' },
       { x: 6400, y: 360, patrol: 110 },
+      { x: 2500, y: 240, patrol: 500, type: 'flyer' },
+      { x: 4800, y: 230, patrol: 500, type: 'flyer' },
+    ],
+    spikes: [
+      { x: 150, y: 370, w: 40 },
+    ],
+    // Plataformas do caminho que agora são TEMPORÁRIAS: caem quando pisadas.
+    fallingPlatforms: [
+      { x: 1160, y: 280, w: 85 },
+      { x: 2000, y: 320, w: 90 },
+      { x: 2840, y: 220, w: 85 },
+      { x: 3680, y: 270, w: 90 },
+      { x: 4520, y: 190, w: 85 },
+      { x: 5360, y: 240, w: 90 },
+      { x: 6200, y: 260, w: 85 },
     ],
     movingPlatforms: [
       { x: 520,  y: 340, w: 85, range: 130, speed: 100 },
@@ -253,31 +276,22 @@ const LEVELS = [
       { x: 360,  y: 350, w: 85 },
       { x: 620,  y: 300, w: 80 },
       { x: 880,  y: 360, w: 85 },
-      { x: 1140, y: 280, w: 80 },
       { x: 1420, y: 340, w: 85 },
       { x: 1700, y: 260, w: 80 },
-      { x: 1980, y: 320, w: 85 },
       { x: 2260, y: 240, w: 80 },
       { x: 2540, y: 300, w: 85 },
-      { x: 2820, y: 220, w: 80 },
       { x: 3100, y: 280, w: 85 },
       { x: 3380, y: 205, w: 80 },
-      { x: 3660, y: 265, w: 85 },
       { x: 3940, y: 195, w: 80 },
       { x: 4220, y: 255, w: 85 },
-      { x: 4500, y: 185, w: 80 },
       { x: 4780, y: 245, w: 85 },
       { x: 5060, y: 175, w: 80 },
-      { x: 5340, y: 235, w: 85 },
       { x: 5620, y: 165, w: 80 },
       { x: 5900, y: 225, w: 85 },
-      { x: 6180, y: 270, w: 80 },
       { x: 6460, y: 200, w: 85 },
       { x: 6740, y: 260, w: 80 },
-      { x: 7020, y: 190, w: 85 },
       { x: 7300, y: 250, w: 80 },
       { x: 7580, y: 180, w: 85 },
-      { x: 7860, y: 240, w: 80 },
       { x: 8140, y: 270, w: 85 },
       { x: 8420, y: 290, w: 120 },
       { x: 8750, y: 270, w: 140 },
@@ -299,20 +313,38 @@ const LEVELS = [
       { x: 7580, y: 140 }, { x: 7860, y: 200 },
     ],
     enemies: [
-      { x: 650,  y: 360, patrol: 100 },
-      { x: 1100, y: 360, patrol: 100 },
+      { x: 650,  y: 360, patrol: 100, type: 'chaser' },
+      { x: 1100, y: 360, patrol: 100, type: 'jumper' },
       { x: 1650, y: 360, patrol: 100 },
-      { x: 2200, y: 360, patrol: 100 },
-      { x: 2750, y: 360, patrol: 100 },
+      { x: 2200, y: 360, patrol: 100, type: 'chaser' },
+      { x: 2750, y: 360, patrol: 100, type: 'jumper' },
       { x: 3350, y: 360, patrol: 100 },
-      { x: 3950, y: 360, patrol: 100 },
-      { x: 4550, y: 360, patrol: 100 },
+      { x: 3950, y: 360, patrol: 100, type: 'chaser' },
+      { x: 4550, y: 360, patrol: 100, type: 'jumper' },
       { x: 5150, y: 360, patrol: 100 },
-      { x: 5750, y: 360, patrol: 100 },
-      { x: 6350, y: 360, patrol: 100 },
+      { x: 5750, y: 360, patrol: 100, type: 'chaser' },
+      { x: 6350, y: 360, patrol: 100, type: 'jumper' },
       { x: 6950, y: 360, patrol: 100 },
-      { x: 7550, y: 360, patrol: 100 },
+      { x: 7550, y: 360, patrol: 100, type: 'chaser' },
       { x: 8150, y: 360, patrol: 100 },
+      { x: 2000, y: 230, patrol: 500, type: 'flyer' },
+      { x: 4400, y: 220, patrol: 500, type: 'flyer' },
+      { x: 6800, y: 230, patrol: 500, type: 'flyer' },
+    ],
+    spikes: [
+      { x: 150, y: 370, w: 40 },
+    ],
+    // Plataformas do caminho que agora são TEMPORÁRIAS: caem quando pisadas.
+    fallingPlatforms: [
+      { x: 1140, y: 280, w: 80 },
+      { x: 1980, y: 320, w: 85 },
+      { x: 2820, y: 220, w: 80 },
+      { x: 3660, y: 265, w: 85 },
+      { x: 4500, y: 185, w: 80 },
+      { x: 5340, y: 235, w: 85 },
+      { x: 6180, y: 270, w: 80 },
+      { x: 7020, y: 190, w: 85 },
+      { x: 7860, y: 240, w: 80 },
     ],
     movingPlatforms: [
       { x: 490,  y: 330, w: 80, range: 120, speed: 120 },
@@ -333,9 +365,14 @@ export class GameScene extends Phaser.Scene {
   constructor() { super('GameScene') }
 
   init(data) {
+    const char = getActiveCharacter()
     this.currentLevel = data.level || 0
     this.score        = data.score || 0
-    this.lives        = data.lives !== undefined ? data.lives : 3
+    // Vidas: vêm da personagem escolhida; nos níveis seguintes mantêm-se (data.lives)
+    this.lives        = data.lives !== undefined ? data.lives : (char?.lives ?? 3)
+    // Características da personagem (salto e velocidade)
+    this.charJump  = char?.jump  ?? 450
+    this.charSpeed = char?.speed ?? 220
   }
 
   create() {
@@ -423,12 +460,32 @@ export class GameScene extends Phaser.Scene {
     // --- Inimigos ---
     this.enemies    = []
     this.enemyGroup = this.physics.add.group()
-    lvl.enemies.forEach(e => this.createEnemy(e.x, e.y, lvl.enemySpeed, e.patrol))
+    lvl.enemies.forEach(e => this.createEnemy(e, lvl.enemySpeed))
     this.physics.add.collider(this.enemyGroup, this.platforms)
     this.physics.add.collider(this.enemyGroup, this.movingPlatforms)
 
+    // --- Espinhos (perigo: tiram uma vida ao tocar) ---
+    this.spikes = this.physics.add.staticGroup()
+    if (lvl.spikes) lvl.spikes.forEach(s => this.createSpikes(s.x, s.y, s.w))
+    this.physics.add.overlap(this.player, this.spikes, this.hitHazard, null, this)
+
+    // --- Plataformas que caem (abanam e desabam quando pisadas) ---
+    this.fallingPlatforms = this.physics.add.staticGroup()
+    if (lvl.fallingPlatforms) {
+      lvl.fallingPlatforms.forEach(fp => this.createFallingPlatform(fp.x, fp.y, fp.w))
+    }
+    this.physics.add.collider(this.player, this.fallingPlatforms, this.touchFallingPlatform, null, this)
+    this.physics.add.collider(this.enemyGroup, this.fallingPlatforms)
+
     // --- Porta ---
-    this.door = this.physics.add.staticSprite(lvl.doorX, 260, 'door')
+    // Pousa a porta EM CIMA da plataforma que está por baixo do doorX.
+    // Topo da plataforma = p.y - 10 (a barra tem 20px de altura centrada em p.y).
+    // A textura da porta tem 90px de altura e origem central → metade = 45px,
+    // por isso door.y = topoDaPlataforma - 45 deixa a base assente na superfície.
+    const doorPlat = lvl.platforms.find(p => Math.abs(p.x - lvl.doorX) <= p.w / 2)
+    const doorTop  = doorPlat ? doorPlat.y - 10 : (lvl.lavaDeath ? 250 : H - 48)
+    const doorY    = doorTop - 45
+    this.door = this.physics.add.staticSprite(lvl.doorX, doorY, 'door')
     this.door.setDepth(3)
     this.physics.add.overlap(this.player, this.door, this.enterDoor, null, this)
 
@@ -783,16 +840,61 @@ export class GameScene extends Phaser.Scene {
   }
 
   createEnemyTexture() {
-    if (this.textures.exists('enemy')) return
-    const g = this.make.graphics({ x: 0, y: 0, add: false })
-    g.fillStyle(0x8B4513); g.fillEllipse(18, 22, 36, 28)
-    g.fillStyle(0xcc6600); g.fillEllipse(18, 20, 28, 22)
-    g.fillStyle(0xffffff); g.fillRect(6, 12, 8, 6); g.fillRect(22, 12, 8, 6)
-    g.fillStyle(0x000000); g.fillRect(9, 13, 4, 4);  g.fillRect(25, 13, 4, 4)
-    g.fillStyle(0x000000); g.fillRect(5, 10, 10, 3); g.fillRect(21, 10, 10, 3)
-    g.fillStyle(0x4a2800); g.fillEllipse(8, 34, 14, 8); g.fillEllipse(28, 34, 14, 8)
-    g.generateTexture('enemy', 36, 38)
-    g.destroy()
+    // walker (padrão) — goomba castanho
+    if (!this.textures.exists('enemy')) {
+      const g = this.make.graphics({ x: 0, y: 0, add: false })
+      g.fillStyle(0x8B4513); g.fillEllipse(18, 22, 36, 28)
+      g.fillStyle(0xcc6600); g.fillEllipse(18, 20, 28, 22)
+      g.fillStyle(0xffffff); g.fillRect(6, 12, 8, 6); g.fillRect(22, 12, 8, 6)
+      g.fillStyle(0x000000); g.fillRect(9, 13, 4, 4);  g.fillRect(25, 13, 4, 4)
+      g.fillStyle(0x000000); g.fillRect(5, 10, 10, 3); g.fillRect(21, 10, 10, 3)
+      g.fillStyle(0x4a2800); g.fillEllipse(8, 34, 14, 8); g.fillEllipse(28, 34, 14, 8)
+      g.generateTexture('enemy', 36, 38)
+      g.destroy()
+    }
+
+    // flyer — morcego/ave azul com asas
+    if (!this.textures.exists('enemy_flyer')) {
+      const g = this.make.graphics({ x: 0, y: 0, add: false })
+      g.fillStyle(0x2f80ed); g.fillTriangle(0, 6, 18, 2, 16, 22)    // asa esquerda
+      g.fillStyle(0x2f80ed); g.fillTriangle(48, 6, 30, 2, 32, 22)   // asa direita
+      g.fillStyle(0x56ccf2); g.fillEllipse(24, 16, 26, 24)          // corpo
+      g.fillStyle(0xffffff); g.fillCircle(19, 13, 4); g.fillCircle(29, 13, 4)
+      g.fillStyle(0x000000); g.fillCircle(20, 13, 2); g.fillCircle(28, 13, 2)
+      g.fillStyle(0xffffff); g.fillTriangle(21, 24, 24, 24, 22, 29) // dente
+      g.fillStyle(0xffffff); g.fillTriangle(24, 24, 27, 24, 26, 29)
+      g.generateTexture('enemy_flyer', 48, 32)
+      g.destroy()
+    }
+
+    // jumper — rã verde de pernas grandes
+    if (!this.textures.exists('enemy_jumper')) {
+      const g = this.make.graphics({ x: 0, y: 0, add: false })
+      g.fillStyle(0x1e8449); g.fillEllipse(8, 33, 14, 8); g.fillEllipse(28, 33, 14, 8) // pés
+      g.fillStyle(0x2ecc40); g.fillEllipse(18, 20, 34, 26)         // corpo
+      g.fillStyle(0x82e0aa); g.fillEllipse(18, 26, 26, 14)         // barriga
+      g.fillStyle(0xffffff); g.fillCircle(11, 8, 6); g.fillCircle(25, 8, 6) // olhos salientes
+      g.fillStyle(0x000000); g.fillCircle(11, 9, 3); g.fillCircle(25, 9, 3)
+      g.fillStyle(0x145a32); g.fillRect(10, 23, 16, 2)             // boca
+      g.generateTexture('enemy_jumper', 36, 38)
+      g.destroy()
+    }
+
+    // chaser — bicho vermelho agressivo, com chifres e dentes
+    if (!this.textures.exists('enemy_chaser')) {
+      const g = this.make.graphics({ x: 0, y: 0, add: false })
+      g.fillStyle(0x7b241c); g.fillTriangle(4, 8, 13, 1, 12, 13)   // chifre esq.
+      g.fillStyle(0x7b241c); g.fillTriangle(34, 8, 25, 1, 26, 13)  // chifre dir.
+      g.fillStyle(0xc0392b); g.fillEllipse(19, 22, 36, 28)         // corpo
+      g.fillStyle(0xe74c3c); g.fillEllipse(19, 20, 28, 22)
+      g.fillStyle(0xffff00); g.fillTriangle(8, 14, 18, 12, 9, 20)  // olhos zangados
+      g.fillStyle(0xffff00); g.fillTriangle(30, 14, 20, 12, 29, 20)
+      g.fillStyle(0x000000); g.fillCircle(12, 16, 2); g.fillCircle(26, 16, 2)
+      g.fillStyle(0xffffff); g.fillTriangle(11, 29, 15, 29, 13, 34) // dentes
+      g.fillStyle(0xffffff); g.fillTriangle(23, 29, 27, 29, 25, 34)
+      g.generateTexture('enemy_chaser', 38, 38)
+      g.destroy()
+    }
   }
 
   createDoorTexture() {
@@ -824,17 +926,105 @@ export class GameScene extends Phaser.Scene {
     })
   }
 
-  createEnemy(x, y, speed, patrol) {
-    const enemy = this.physics.add.sprite(x, y, 'enemy')
+  createEnemy(cfg, speed) {
+    const type   = cfg.type || 'walker'
+    const texKey = { flyer: 'enemy_flyer', jumper: 'enemy_jumper', chaser: 'enemy_chaser' }[type] || 'enemy'
+    const enemy  = this.physics.add.sprite(cfg.x, cfg.y, texKey)
     enemy.setCollideWorldBounds(true)
-    enemy.body.setVelocityX(speed)
     enemy.setDepth(4)
     enemy.direction = 1
     enemy.speed     = speed
-    enemy.startX    = x
-    enemy.patrol    = patrol
-    this.enemyGroup.add(enemy)
+    enemy.startX    = cfg.x
+    enemy.startY    = cfg.y
+    enemy.patrol    = cfg.patrol
+    enemy.type      = type
+    enemy.nextJump  = 0
+
+    // O voador anda no ar (sem gravidade); cada tipo tem a sua própria skin/textura.
+    if (type === 'flyer') enemy.body.setAllowGravity(false)
+
+    enemy.body.setVelocityX(speed)
+    // O voador não colide com plataformas (anda no ar); os restantes sim.
+    if (type !== 'flyer') this.enemyGroup.add(enemy)
     this.enemies.push(enemy)
+  }
+
+  // Espinhos: fila de triângulos com base assente em y; zona de morte invisível.
+  createSpikes(x, y, w) {
+    const spikeW = 14
+    const count  = Math.max(1, Math.floor(w / spikeW))
+    const startX = x - (count * spikeW) / 2
+
+    const g = this.add.graphics()
+    g.setDepth(3)
+    for (let i = 0; i < count; i++) {
+      const sx = startX + i * spikeW
+      g.fillStyle(0xcfd8dc)
+      g.fillTriangle(sx, y, sx + spikeW, y, sx + spikeW / 2, y - 16)
+      g.fillStyle(0xffffff, 0.6)
+      g.fillTriangle(sx + spikeW / 2, y - 16, sx + spikeW / 2 - 2, y - 4, sx + spikeW / 2 + 1, y - 4)
+    }
+    g.lineStyle(1, 0x607d8b, 0.8)
+    g.strokeRect(startX, y - 2, count * spikeW, 2)
+
+    const zone = this.add.rectangle(x, y - 8, count * spikeW, 14)
+    zone.setAlpha(0)
+    this.physics.add.existing(zone, true)
+    this.spikes.add(zone)
+  }
+
+  // Plataforma que cai: ao ser pisada abana, desaba e reaparece passado uns segundos.
+  createFallingPlatform(x, y, w) {
+    const plat = this.add.rectangle(x, y, w, 20, 0xc97b3c)
+    this.physics.add.existing(plat, true)
+    plat.setDepth(2)
+    plat.fallState = 'idle'
+    plat.origY     = y
+
+    // Faixa clara no topo + fendas para se distinguir das normais
+    const top = this.add.rectangle(x, y - 6, w, 7, 0xe09b5c).setDepth(2)
+    const crack = this.add.graphics().setDepth(2)
+    crack.lineStyle(1, 0x000000, 0.35)
+    crack.lineBetween(x - w / 4, y - 8, x - w / 4 + 6, y + 8)
+    crack.lineBetween(x + w / 6, y - 8, x + w / 6 - 5, y + 8)
+    plat.deco = [top, crack]
+
+    this.fallingPlatforms.add(plat)
+  }
+
+  touchFallingPlatform(player, plat) {
+    // Só dispara quando o jogador está mesmo por cima e a plataforma está estável
+    if (plat.fallState !== 'idle') return
+    if (!player.body.blocked.down || player.y > plat.y) return
+
+    plat.fallState = 'shaking'
+    // Abanar (visual)
+    this.tweens.add({
+      targets: [plat, ...plat.deco],
+      x: '+=3', duration: 45, yoyo: true, repeat: 9
+    })
+
+    this.time.delayedCall(550, () => {
+      // Desaba: desliga colisão e cai
+      plat.fallState = 'falling'
+      plat.body.enable = false
+      this.tweens.add({
+        targets: [plat, ...plat.deco],
+        y: '+=420', alpha: 0, duration: 700, ease: 'Quad.easeIn'
+      })
+
+      // Reaparece no sítio original passado uns segundos
+      this.time.delayedCall(2800, () => {
+        this.tweens.killTweensOf([plat, ...plat.deco])
+        plat.y = plat.origY
+        plat.setAlpha(1)
+        plat.body.enable = true
+        plat.body.updateFromGameObject()
+        plat.deco[0].setPosition(plat.x, plat.origY - 6).setAlpha(1)
+        plat.deco[1].setPosition(0, 0).setAlpha(1)
+        plat.fallState = 'idle'
+      })
+    })
   }
 
   // ─── Eventos de jogo ──────────────────────────────────────────────────────
@@ -864,6 +1054,11 @@ export class GameScene extends Phaser.Scene {
         })
       }
     })
+  }
+
+  // Espinhos partilham a mesma penalização da lava (perder uma vida + respawn)
+  hitHazard() {
+    this.fallInLava()
   }
 
   fallInLava() {
@@ -946,11 +1141,11 @@ export class GameScene extends Phaser.Scene {
 
     // Os sprites do Mário estão virados para a ESQUERDA na imagem original,
     // por isso: andar à esquerda = sem flip; andar à direita = flip horizontal.
-    if (left)       { this.player.body.setVelocityX(-220); this.player.setFlipX(false) }
-    else if (right) { this.player.body.setVelocityX(220);  this.player.setFlipX(true)  }
+    if (left)       { this.player.body.setVelocityX(-this.charSpeed); this.player.setFlipX(false) }
+    else if (right) { this.player.body.setVelocityX(this.charSpeed);  this.player.setFlipX(true)  }
     else            { this.player.body.setVelocityX(0) }
 
-    if (jump && onGround) this.player.body.setVelocityY(-JUMP_VELOCITY)
+    if (jump && onGround) this.player.body.setVelocityY(-this.charJump)
 
     // Animações da spritesheet (só quando há frames configurados)
     if (this.framesConfigured) {
@@ -974,12 +1169,42 @@ export class GameScene extends Phaser.Scene {
       plat.body.setVelocityX(plat.movSpeed * plat.moveDir)
     })
 
-    // Inimigos com patrulha
+    // Inimigos — comportamento por tipo
     this.enemies.forEach(enemy => {
       if (!enemy.active) return
+
+      // Inverte a direção nos limites da patrulha (comum a quase todos)
       if (enemy.x > enemy.startX + enemy.patrol) enemy.direction = -1
       if (enemy.x < enemy.startX - enemy.patrol) enemy.direction = 1
-      enemy.body.setVelocityX(enemy.speed * enemy.direction)
+
+      if (enemy.type === 'flyer') {
+        // Voa: patrulha na horizontal e oscila na vertical (onda)
+        enemy.body.setVelocityX(enemy.speed * enemy.direction)
+        enemy.y = enemy.startY + Math.sin(this.time.now / 300 + enemy.startX) * 45
+
+      } else if (enemy.type === 'chaser') {
+        // Persegue o jogador quando está perto; senão patrulha normal
+        const dist = this.player.x - enemy.x
+        if (Math.abs(dist) < 260) {
+          enemy.direction = dist > 0 ? 1 : -1
+          enemy.body.setVelocityX(enemy.speed * 1.5 * enemy.direction)
+        } else {
+          enemy.body.setVelocityX(enemy.speed * enemy.direction)
+        }
+
+      } else if (enemy.type === 'jumper') {
+        // Anda e salta periodicamente quando está no chão
+        enemy.body.setVelocityX(enemy.speed * enemy.direction)
+        if (enemy.body.blocked.down && this.time.now > enemy.nextJump) {
+          enemy.body.setVelocityY(-340)
+          enemy.nextJump = this.time.now + 1100
+        }
+
+      } else {
+        // walker (padrão)
+        enemy.body.setVelocityX(enemy.speed * enemy.direction)
+      }
+
       enemy.setFlipX(enemy.direction === -1)
     })
 

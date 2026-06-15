@@ -48,14 +48,28 @@ export const BG_LAYERS = [
   ],
 ]
 
-// Skins do personagem — 4 slots
-// Se url estiver vazio, usa o design procedural padrão do slot
+// Personagens — 4 slots. Cada um tem características próprias:
+//   jump  → força do salto (maior = salta mais alto)
+//   speed → velocidade horizontal (maior = mais rápido)
+//   lives → número de vidas com que começa
+// Se url estiver vazio, usa o design procedural padrão do slot.
 export const SKINS = [
-  { key: 'skin_img0', url: '/yi_mario.png',   label_pt: 'Mario',   label_en: 'Mario'   },
-  { key: 'skin_img1', url: '/yi_luigi.png',   label_pt: 'Luigi',   label_en: 'Luigi'   },
-  { key: 'skin_img2', url: '/yi_wario.png',   label_pt: 'Wario',   label_en: 'Wario'   },
-  { key: 'skin_img3', url: '/yi_waluigi.png', label_pt: 'Waluigi', label_en: 'Waluigi' },
+  { key: 'skin_img0', url: '/yi_mario.png',   label_pt: 'Mario',   label_en: 'Mario',
+    role_pt: 'Equilibrado', role_en: 'Balanced',   jump: 470, speed: 230, lives: 3 },
+  { key: 'skin_img1', url: '/yi_luigi.png',   label_pt: 'Luigi',   label_en: 'Luigi',
+    role_pt: 'Saltador',    role_en: 'High Jumper', jump: 590, speed: 210, lives: 3 },
+  { key: 'skin_img2', url: '/yi_wario.png',   label_pt: 'Wario',   label_en: 'Wario',
+    role_pt: 'Resistente',  role_en: 'Tank',        jump: 470, speed: 190, lives: 6 },
+  { key: 'skin_img3', url: '/yi_waluigi.png', label_pt: 'Waluigi', label_en: 'Waluigi',
+    role_pt: 'Veloz',       role_en: 'Speedster',   jump: 450, speed: 310, lives: 2 },
 ]
+
+// Limites usados para desenhar as barras de estatísticas (0..max → 0..100%)
+export const STAT_RANGES = {
+  jump:  { min: 400, max: 620 },
+  speed: { min: 160, max: 340 },
+  lives: { min: 1,   max: 7   },
+}
 
 // Frames extraídos das spritesheets (coordenadas em píxeis na imagem original)
 // idle/walk/jump: { x, y, w, h } — coordenadas do frame na spritesheet

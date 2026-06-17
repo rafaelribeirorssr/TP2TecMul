@@ -1,0 +1,19 @@
+{
+  "title": "Super Adventure",
+  "start": "Start Game",
+  "language": "Language",
+  "controls": "Arrows or WASD to move, SPACE to jump, ESC to pause",
+  "score": "Score",
+  "lives": "Lives",
+  "gameover": "Game Over",
+  "victory": "Victory!",
+  "restart": "R to restart",
+  "finalScore": "Final score",
+  "time": "Time",
+  "finalTime": "Total time",
+  "level": "Level",
+  "paused": "Paused",
+  "resume": "Resume",
+  "restartLevel": "Restart level",
+  "backToMenu": "Main menu"
+}

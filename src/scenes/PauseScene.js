@@ -9,6 +9,7 @@ export class PauseScene extends Phaser.Scene {
     this.level = data.level || 0
     this.score = data.score || 0
     this.lives = data.lives !== undefined ? data.lives : 3
+    this.elapsed = data.elapsed || 0
   }
 
   create() {
@@ -32,7 +33,8 @@ export class PauseScene extends Phaser.Scene {
       this.scene.start('GameScene', {
         level: this.level,
         score: this.score,
-        lives: this.lives
+        lives: this.lives,
+        elapsed: this.elapsed
       })
     })
 

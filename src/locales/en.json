@@ -9,6 +9,8 @@
   "victory": "Victory!",
   "restart": "R to restart",
   "finalScore": "Final score",
+  "time": "Time",
+  "finalTime": "Total time",
   "level": "Level",
   "paused": "Paused",
   "resume": "Resume",

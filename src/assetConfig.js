@@ -89,9 +89,23 @@ const YI_FRAMES = {
   jump: { x: 108, y: 0, w: 27, h: 33 },
 }
 
+// Waluigi é a personagem mais alta, por isso a folha antiga (27x33) cortava-lhe
+// as pernas e os pés ao correr. A yi_waluigi.png foi reextraída do original com
+// o corpo inteiro: 5 células de 36x38, alinhadas pela base (pés) e centradas.
+const WAL_FRAMES = {
+  display: { w: 44, h: 48 },
+  idle: { x: 0, y: 0, w: 36, h: 38 },
+  walk: [
+    { x: 36,  y: 0, w: 36, h: 38 },
+    { x: 72,  y: 0, w: 36, h: 38 },
+    { x: 108, y: 0, w: 36, h: 38 },
+  ],
+  jump: { x: 144, y: 0, w: 36, h: 38 },
+}
+
 export const SPRITE_FRAMES = {
-  'skin_img0': YI_FRAMES, // Mario
-  'skin_img1': YI_FRAMES, // Luigi
-  'skin_img2': YI_FRAMES, // Wario
-  'skin_img3': YI_FRAMES, // Waluigi
+  'skin_img0': YI_FRAMES,  // Mario
+  'skin_img1': YI_FRAMES,  // Luigi
+  'skin_img2': YI_FRAMES,  // Wario
+  'skin_img3': WAL_FRAMES, // Waluigi (corpo inteiro, pernas e pés visíveis)
 }

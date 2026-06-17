@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { getLang } from './MenuScene.js'
+import { formatTime } from './GameScene.js'
 
 export class GameOverScene extends Phaser.Scene {
   constructor() { super('GameOverScene') }
@@ -7,6 +8,7 @@ export class GameOverScene extends Phaser.Scene {
   init(data) {
     this.finalScore = data.score || 0
     this.victory = data.victory || false
+    this.finalTime = data.time || 0
   }
 
   create() {
@@ -22,6 +24,13 @@ export class GameOverScene extends Phaser.Scene {
     this.add.text(cx, 250, `${t.finalScore}: ${this.finalScore}`, {
       fontSize: '28px', fill: '#ffffff'
     }).setOrigin(0.5)
+
+    // Só na vitória se mostra o tempo total. Na derrota o cronómetro não aparece.
+    if (this.victory) {
+      this.add.text(cx, 292, `${t.finalTime}: ${formatTime(this.finalTime)}`, {
+        fontSize: '24px', fill: '#FFD700'
+      }).setOrigin(0.5)
+    }
 
     this.add.text(cx, 330, t.restart, {
       fontSize: '20px', fill: '#aaaaaa'

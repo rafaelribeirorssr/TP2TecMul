@@ -2,6 +2,17 @@ import Phaser from 'phaser'
 import { getLang, getActiveSkinIndex, getActiveCharacter } from './MenuScene.js'
 import { BG_LAYERS, SKINS, SPRITE_FRAMES } from '../assetConfig.js'
 
+// Formata um tempo em milissegundos para "MM:SS.CC" (centésimos), tipo cronómetro.
+export function formatTime(ms) {
+  const totalCs  = Math.floor(ms / 10)
+  const cs       = totalCs % 100
+  const totalSec = Math.floor(totalCs / 100)
+  const sec      = totalSec % 60
+  const min      = Math.floor(totalSec / 60)
+  const p2 = n => String(n).padStart(2, '0')
+  return `${p2(min)}:${p2(sec)}.${p2(cs)}`
+}
+
 // O salto e a velocidade já NÃO são fixos: cada personagem traz os seus valores
 // (jump/speed em assetConfig.js → SKINS). Lidos em init() para this.charJump /
 // this.charSpeed. Como referência, o salto ronda 450-590 e a velocidade 190-310.
@@ -21,7 +32,7 @@ const LEVELS = [
     bgColor: 0x87CEEB,
     groundColor: 0x8B4513,
     grassColor: 0x5ca832,
-    enemySpeed: 80,
+    enemySpeed: 110,
     lavaDeath: false,
     platforms: [
       { x: 400,  y: 380, w: 180 },
@@ -43,9 +54,19 @@ const LEVELS = [
     ],
     enemies: [
       { x: 600,  y: 420, patrol: 200 },
+      { x: 950,  y: 420, patrol: 220, type: 'chaser' },
       { x: 1200, y: 420, patrol: 200, type: 'jumper' },
       { x: 1800, y: 420, patrol: 200 },
+      { x: 2400, y: 420, patrol: 200, type: 'jumper' },
       { x: 1500, y: 200, patrol: 250, type: 'flyer' },
+      { x: 2300, y: 220, patrol: 300, type: 'flyer' },
+    ],
+    // Espinhos no chão: obrigam a saltar para as plataformas em vez de correr em baixo.
+    spikes: [
+      { x: 850,  y: 451, w: 80 },
+      { x: 1450, y: 451, w: 80 },
+      { x: 2050, y: 451, w: 80 },
+      { x: 2650, y: 451, w: 70 },
     ],
     doorX: 2850,
   },
@@ -55,7 +76,7 @@ const LEVELS = [
     bgColor: 0x1a1a2e,
     groundColor: 0x3a3a3a,
     grassColor: 0x555555,
-    enemySpeed: 130,
+    enemySpeed: 165,
     lavaDeath: false,
     platforms: [
       { x: 300,  y: 370, w: 140 },
@@ -88,14 +109,23 @@ const LEVELS = [
       { x: 500,  y: 420, patrol: 150 },
       { x: 1000, y: 420, patrol: 150, type: 'chaser' },
       { x: 1500, y: 420, patrol: 150 },
+      { x: 1900, y: 420, patrol: 160, type: 'jumper' },
       { x: 2200, y: 420, patrol: 150, type: 'jumper' },
       { x: 3000, y: 420, patrol: 150 },
+      { x: 3500, y: 420, patrol: 170, type: 'chaser' },
+      { x: 4000, y: 420, patrol: 150, type: 'chaser' },
       { x: 2600, y: 190, patrol: 300, type: 'flyer' },
+      { x: 3800, y: 200, patrol: 350, type: 'flyer' },
     ],
     spikes: [
+      { x: 950,  y: 451, w: 80 },
+      { x: 1450, y: 451, w: 80 },
       { x: 1750, y: 451, w: 70 },
+      { x: 2350, y: 451, w: 90 },
       { x: 2750, y: 451, w: 70 },
+      { x: 3150, y: 451, w: 80 },
       { x: 3550, y: 451, w: 70 },
+      { x: 4000, y: 451, w: 90 },
     ],
     movingPlatforms: [
       { x: 1800, y: 320, w: 120, range: 150, speed: 60 },
@@ -110,7 +140,7 @@ const LEVELS = [
     bgColor: 0x0d0d0d,
     groundColor: 0x8B0000,
     grassColor: 0xff4400,
-    enemySpeed: 180,
+    enemySpeed: 215,
     lavaDeath: true,
     deathPitColor: 0xff2200,
     deathPitGlowColor: 0xff6600,
@@ -147,16 +177,18 @@ const LEVELS = [
       { x: 4840, y: 230 }, { x: 5100, y: 160 },
     ],
     enemies: [
-      { x: 600,  y: 360, patrol: 120 },
+      { x: 600,  y: 360, patrol: 120, type: 'chaser' },
       { x: 1100, y: 360, patrol: 120, type: 'jumper' },
       { x: 1700, y: 360, patrol: 120 },
       { x: 2400, y: 360, patrol: 120, type: 'jumper' },
-      { x: 3100, y: 360, patrol: 120 },
+      { x: 3100, y: 360, patrol: 120, type: 'chaser' },
       { x: 3800, y: 360, patrol: 120, type: 'jumper' },
-      { x: 4500, y: 360, patrol: 120 },
+      { x: 4500, y: 360, patrol: 120, type: 'chaser' },
       { x: 5200, y: 360, patrol: 120 },
       { x: 2000, y: 250, patrol: 400, type: 'flyer' },
+      { x: 3000, y: 230, patrol: 450, type: 'flyer' },
       { x: 4000, y: 240, patrol: 400, type: 'flyer' },
+      { x: 5000, y: 220, patrol: 350, type: 'flyer' },
     ],
     spikes: [
       { x: 150, y: 370, w: 40 },
@@ -185,7 +217,7 @@ const LEVELS = [
     bgColor: 0xb0d4f0,
     groundColor: 0x5599cc,
     grassColor: 0x88ccee,
-    enemySpeed: 220,
+    enemySpeed: 255,
     lavaDeath: true,
     deathPitColor: 0x1155aa,
     deathPitGlowColor: 0x3399dd,
@@ -233,9 +265,11 @@ const LEVELS = [
       { x: 4400, y: 360, patrol: 110, type: 'jumper' },
       { x: 5100, y: 360, patrol: 110 },
       { x: 5800, y: 360, patrol: 110, type: 'chaser' },
-      { x: 6400, y: 360, patrol: 110 },
+      { x: 6400, y: 360, patrol: 110, type: 'jumper' },
       { x: 2500, y: 240, patrol: 500, type: 'flyer' },
+      { x: 3700, y: 220, patrol: 450, type: 'flyer' },
       { x: 4800, y: 230, patrol: 500, type: 'flyer' },
+      { x: 6000, y: 210, patrol: 400, type: 'flyer' },
     ],
     spikes: [
       { x: 150, y: 370, w: 40 },
@@ -267,7 +301,7 @@ const LEVELS = [
     bgColor: 0x000011,
     groundColor: 0x110022,
     grassColor: 0x220033,
-    enemySpeed: 280,
+    enemySpeed: 320,
     lavaDeath: true,
     deathPitColor: 0x110022,
     deathPitGlowColor: 0x440066,
@@ -326,10 +360,13 @@ const LEVELS = [
       { x: 6350, y: 360, patrol: 100, type: 'jumper' },
       { x: 6950, y: 360, patrol: 100 },
       { x: 7550, y: 360, patrol: 100, type: 'chaser' },
-      { x: 8150, y: 360, patrol: 100 },
+      { x: 8150, y: 360, patrol: 100, type: 'jumper' },
       { x: 2000, y: 230, patrol: 500, type: 'flyer' },
+      { x: 3200, y: 220, patrol: 450, type: 'flyer' },
       { x: 4400, y: 220, patrol: 500, type: 'flyer' },
+      { x: 5600, y: 210, patrol: 450, type: 'flyer' },
       { x: 6800, y: 230, patrol: 500, type: 'flyer' },
+      { x: 7900, y: 215, patrol: 400, type: 'flyer' },
     ],
     spikes: [
       { x: 150, y: 370, w: 40 },
@@ -373,6 +410,9 @@ export class GameScene extends Phaser.Scene {
     // Características da personagem (salto e velocidade)
     this.charJump  = char?.jump  ?? 450
     this.charSpeed = char?.speed ?? 220
+    // Cronómetro: tempo acumulado dos níveis anteriores (ms). Começa a zero num
+    // jogo novo (data.elapsed indefinido) e vai sendo passado de nível em nível.
+    this.baseElapsed = data.elapsed || 0
   }
 
   create() {
@@ -382,6 +422,7 @@ export class GameScene extends Phaser.Scene {
     this.transitioning       = false
     this.movingPlatformList  = []
     this.coinsCollected      = 0   // moedas apanhadas NESTE nível (reinicia a cada nível)
+    this.elapsedMs           = this.baseElapsed   // tempo total decorrido (ms), conta no update()
 
     const W = lvl.worldWidth
     const H = 500
@@ -440,6 +481,9 @@ export class GameScene extends Phaser.Scene {
     const playerKey = (imgKey && this.textures.exists(imgKey)) ? imgKey : `skin${skinIdx}`
     this.playerKey       = playerKey
     this.walkAnimKey     = `${playerKey}_walk`
+    // Alguns sprites já vêm desenhados virados à direita (ex: Waluigi); nesses
+    // casos o flip é o inverso do habitual.
+    this.spriteFacesRight = !!SPRITE_FRAMES[playerKey]?.facesRight
     this.framesConfigured = this.setupSpriteFrames(playerKey)
     this.player = this.physics.add.sprite(100, startY, playerKey,
       this.framesConfigured ? 'idle' : undefined)
@@ -516,7 +560,8 @@ export class GameScene extends Phaser.Scene {
       this.scene.launch('PauseScene', {
         level: this.currentLevel,
         score: this.score,
-        lives: this.lives
+        lives: this.lives,
+        elapsed: this.elapsedMs
       })
     })
 
@@ -541,6 +586,13 @@ export class GameScene extends Phaser.Scene {
       fontSize: '18px', fill: '#FFD700',
       stroke: '#000000', strokeThickness: 3
     }).setScrollFactor(0).setDepth(20)
+
+    // Cronómetro (canto superior direito) — corre enquanto se joga e acumula
+    // entre níveis. Não conta durante a pausa (o update() pára).
+    this.timerText = this.add.text(784, 14, `⏱ ${formatTime(this.elapsedMs)}`, {
+      fontSize: '20px', fill: '#ffffff',
+      stroke: '#000000', strokeThickness: 3
+    }).setOrigin(1, 0).setScrollFactor(0).setDepth(20)
   }
 
   // ─── Fundo ───────────────────────────────────────────────────────────────
@@ -1045,12 +1097,15 @@ export class GameScene extends Phaser.Scene {
     const nextLevel = this.currentLevel + 1
     this.time.delayedCall(700, () => {
       if (nextLevel >= LEVELS.length) {
-        this.scene.start('GameOverScene', { score: this.score, victory: true })
+        this.scene.start('GameOverScene', {
+          score: this.score, victory: true, time: this.elapsedMs
+        })
       } else {
         this.scene.start('GameScene', {
           level: nextLevel,
           score: this.score,
-          lives: this.lives
+          lives: this.lives,
+          elapsed: this.elapsedMs
         })
       }
     })
@@ -1127,7 +1182,14 @@ export class GameScene extends Phaser.Scene {
 
   // ─── Loop principal ───────────────────────────────────────────────────────
 
-  update() {
+  update(time, delta) {
+    // Cronómetro: acumula o tempo de jogo. Como o update() não corre durante a
+    // pausa nem na transição/derrota, o tempo parado não conta.
+    if (!this.transitioning) {
+      this.elapsedMs += delta
+      this.timerText.setText(`⏱ ${formatTime(this.elapsedMs)}`)
+    }
+
     const left     = this.cursors.left.isDown  || this.wasd.left.isDown
     const right    = this.cursors.right.isDown || this.wasd.right.isDown
     const jump     = this.cursors.up.isDown || this.cursors.space.isDown || this.wasd.up.isDown
@@ -1139,11 +1201,16 @@ export class GameScene extends Phaser.Scene {
       this.parallaxLayers.forEach(l => { l.tilePositionX = camX * l.parallaxFactor })
     }
 
-    // Os sprites do Mário estão virados para a ESQUERDA na imagem original,
-    // por isso: andar à esquerda = sem flip; andar à direita = flip horizontal.
-    if (left)       { this.player.body.setVelocityX(-this.charSpeed); this.player.setFlipX(false) }
-    else if (right) { this.player.body.setVelocityX(this.charSpeed);  this.player.setFlipX(true)  }
-    else            { this.player.body.setVelocityX(0) }
+    // A maioria dos sprites está desenhada virada para a ESQUERDA, por isso
+    // andar à direita exige flip horizontal. Sprites já virados à direita
+    // (spriteFacesRight) usam o flip inverso.
+    const flipLeft  = this.spriteFacesRight ? true  : false
+    const flipRight = this.spriteFacesRight ? false : true
+    if (left)       { this.player.body.setVelocityX(-this.charSpeed); this.player.setFlipX(flipLeft) }
+    else if (right) { this.player.body.setVelocityX(this.charSpeed);  this.player.setFlipX(flipRight) }
+    // Parado: volta a ficar virado para a frente (direita) por definição,
+    // em vez de manter a última direção em que andou.
+    else            { this.player.body.setVelocityX(0); this.player.setFlipX(flipRight) }
 
     if (jump && onGround) this.player.body.setVelocityY(-this.charJump)
 

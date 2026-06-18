@@ -1,8 +1,8 @@
 import Phaser from 'phaser'
 import { getLang, getActiveSkinIndex, getActiveCharacter } from './MenuScene.js'
 import { BG_LAYERS, SKINS, SPRITE_FRAMES } from '../assetConfig.js'
+import { audio } from '../audio.js'
 
-// Formata um tempo em milissegundos para "MM:SS.CC" (centésimos), tipo cronómetro.
 export function formatTime(ms) {
   const totalCs  = Math.floor(ms / 10)
   const cs       = totalCs % 100
@@ -12,11 +12,6 @@ export function formatTime(ms) {
   const p2 = n => String(n).padStart(2, '0')
   return `${p2(min)}:${p2(sec)}.${p2(cs)}`
 }
-
-// O salto e a velocidade já NÃO são fixos: cada personagem traz os seus valores
-// (jump/speed em assetConfig.js → SKINS). Lidos em init() para this.charJump /
-// this.charSpeed. Como referência, o salto ronda 450-590 e a velocidade 190-310.
-// Evita saltos abaixo de ~420, senão a personagem pode não chegar a algumas plataformas.
 
 const SKIN_CONFIGS = [
   { hat: 0xcc0000, hatBrim: 0xcc0000, face: 0xffcc99, eyes: 0x000000, detail: 0x6b3a2a, body: 0x1a3ccc, buttons: 0xffcc00, shoes: 0x4a2800 },
@@ -61,7 +56,7 @@ const LEVELS = [
       { x: 1500, y: 200, patrol: 250, type: 'flyer' },
       { x: 2300, y: 220, patrol: 300, type: 'flyer' },
     ],
-    // Espinhos no chão: obrigam a saltar para as plataformas em vez de correr em baixo.
+
     spikes: [
       { x: 850,  y: 451, w: 80 },
       { x: 1450, y: 451, w: 80 },
@@ -193,7 +188,7 @@ const LEVELS = [
     spikes: [
       { x: 150, y: 370, w: 40 },
     ],
-    // Plataformas do caminho que agora são TEMPORÁRIAS: caem quando pisadas.
+
     fallingPlatforms: [
       { x: 1220, y: 350, w: 100 },
       { x: 1980, y: 260, w:  90 },
@@ -274,7 +269,7 @@ const LEVELS = [
     spikes: [
       { x: 150, y: 370, w: 40 },
     ],
-    // Plataformas do caminho que agora são TEMPORÁRIAS: caem quando pisadas.
+
     fallingPlatforms: [
       { x: 1160, y: 280, w: 85 },
       { x: 2000, y: 320, w: 90 },
@@ -371,7 +366,7 @@ const LEVELS = [
     spikes: [
       { x: 150, y: 370, w: 40 },
     ],
-    // Plataformas do caminho que agora são TEMPORÁRIAS: caem quando pisadas.
+
     fallingPlatforms: [
       { x: 1140, y: 280, w: 80 },
       { x: 1980, y: 320, w: 85 },
@@ -405,13 +400,12 @@ export class GameScene extends Phaser.Scene {
     const char = getActiveCharacter()
     this.currentLevel = data.level || 0
     this.score        = data.score || 0
-    // Vidas: vêm da personagem escolhida; nos níveis seguintes mantêm-se (data.lives)
+
     this.lives        = data.lives !== undefined ? data.lives : (char?.lives ?? 3)
-    // Características da personagem (salto e velocidade)
+
     this.charJump  = char?.jump  ?? 450
     this.charSpeed = char?.speed ?? 220
-    // Cronómetro: tempo acumulado dos níveis anteriores (ms). Começa a zero num
-    // jogo novo (data.elapsed indefinido) e vai sendo passado de nível em nível.
+
     this.baseElapsed = data.elapsed || 0
   }
 
@@ -421,18 +415,16 @@ export class GameScene extends Phaser.Scene {
     this.invincible          = false
     this.transitioning       = false
     this.movingPlatformList  = []
-    this.coinsCollected      = 0   // moedas apanhadas NESTE nível (reinicia a cada nível)
-    this.elapsedMs           = this.baseElapsed   // tempo total decorrido (ms), conta no update()
+    this.coinsCollected      = 0
+    this.elapsedMs           = this.baseElapsed
 
     const W = lvl.worldWidth
     const H = 500
 
     this.physics.world.setBounds(0, 0, W, H + 100)
 
-    // --- Fundo base ---
     this.add.rectangle(W / 2, H / 2, W, H, lvl.bgColor).setScrollFactor(1)
 
-    // --- Plataformas ---
     this.platforms = this.physics.add.staticGroup()
 
     if (lvl.lavaDeath) {
@@ -446,74 +438,63 @@ export class GameScene extends Phaser.Scene {
       this.lavaGround.setAlpha(0)
       this.physics.add.existing(this.lavaGround, true)
     } else {
-      // Nível 1 e 2: chão sólido
+
       for (let x = 0; x < W; x += 50) {
         this.drawGroundTile(x, H - 40, lvl.groundColor, lvl.grassColor)
       }
     }
 
-    // --- Plataformas estáticas ---
     lvl.platforms.forEach(p => this.createPlatform(p.x, p.y, p.w))
 
-    // --- Plataformas móveis ---
     this.movingPlatforms = this.physics.add.group()
     if (lvl.movingPlatforms) {
       lvl.movingPlatforms.forEach(mp => this.createMovingPlatform(mp))
     }
 
-    // --- Fundo procedural (cria também colisores do chão nos níveis sem lava) ---
     this.drawBackground(lvl, W, H)
 
-    // --- Parallax por cima (apenas se houver imagens configuradas) ---
     this.parallaxLayers = []
     this.createParallaxLayers(W, H)
 
-    // --- Texturas ---
     this.createSkinTextures()
     this.createCoinTexture()
     this.createEnemyTexture()
     this.createDoorTexture()
 
-    // --- Jogador ---
     const startY  = lvl.lavaDeath ? 330 : 380
     const skinIdx = getActiveSkinIndex()
     const imgKey  = SKINS[skinIdx]?.key
     const playerKey = (imgKey && this.textures.exists(imgKey)) ? imgKey : `skin${skinIdx}`
     this.playerKey       = playerKey
     this.walkAnimKey     = `${playerKey}_walk`
-    // Alguns sprites já vêm desenhados virados à direita (ex: Waluigi); nesses
-    // casos o flip é o inverso do habitual.
+
     this.spriteFacesRight = !!SPRITE_FRAMES[playerKey]?.facesRight
     this.framesConfigured = this.setupSpriteFrames(playerKey)
     this.player = this.physics.add.sprite(100, startY, playerKey,
       this.framesConfigured ? 'idle' : undefined)
-    // Cada personagem tem o seu tamanho (o "Mini" é mais pequeno e proporcional).
+
     const disp = SPRITE_FRAMES[playerKey]?.display || { w: 40, h: 50 }
     this.player.setDisplaySize(disp.w, disp.h)
-    this.player.setBounce(0)   // sem bounce: evita o "tremor" do corpo a saltitar no chão
+    this.player.setBounce(0)
     this.player.setCollideWorldBounds(true)
     this.player.setDepth(5)
     this.physics.add.collider(this.player, this.platforms)
     this.physics.add.collider(this.player, this.movingPlatforms)
 
-    // --- Moedas ---
     this.coins = this.physics.add.staticGroup()
     lvl.coins.forEach(c => this.createCoin(c.x, c.y))
     this.physics.add.overlap(this.player, this.coins, this.collectCoin, null, this)
 
-    // --- Inimigos ---
     this.enemies    = []
     this.enemyGroup = this.physics.add.group()
     lvl.enemies.forEach(e => this.createEnemy(e, lvl.enemySpeed))
     this.physics.add.collider(this.enemyGroup, this.platforms)
     this.physics.add.collider(this.enemyGroup, this.movingPlatforms)
 
-    // --- Espinhos (perigo: tiram uma vida ao tocar) ---
     this.spikes = this.physics.add.staticGroup()
     if (lvl.spikes) lvl.spikes.forEach(s => this.createSpikes(s.x, s.y, s.w))
     this.physics.add.overlap(this.player, this.spikes, this.hitHazard, null, this)
 
-    // --- Plataformas que caem (abanam e desabam quando pisadas) ---
     this.fallingPlatforms = this.physics.add.staticGroup()
     if (lvl.fallingPlatforms) {
       lvl.fallingPlatforms.forEach(fp => this.createFallingPlatform(fp.x, fp.y, fp.w))
@@ -521,11 +502,6 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.collider(this.player, this.fallingPlatforms, this.touchFallingPlatform, null, this)
     this.physics.add.collider(this.enemyGroup, this.fallingPlatforms)
 
-    // --- Porta ---
-    // Pousa a porta EM CIMA da plataforma que está por baixo do doorX.
-    // Topo da plataforma = p.y - 10 (a barra tem 20px de altura centrada em p.y).
-    // A textura da porta tem 90px de altura e origem central → metade = 45px,
-    // por isso door.y = topoDaPlataforma - 45 deixa a base assente na superfície.
     const doorPlat = lvl.platforms.find(p => Math.abs(p.x - lvl.doorX) <= p.w / 2)
     const doorTop  = doorPlat ? doorPlat.y - 10 : (lvl.lavaDeath ? 250 : H - 48)
     const doorY    = doorTop - 45
@@ -533,19 +509,15 @@ export class GameScene extends Phaser.Scene {
     this.door.setDepth(3)
     this.physics.add.overlap(this.player, this.door, this.enterDoor, null, this)
 
-    // --- Câmara ---
     this.cameras.main.setBounds(0, 0, W, H)
-    // roundPixels=false: com o lerp suave, arredondar a píxeis fazia a câmara
-    // oscilar ±1px à volta do alvo, dando a sensação de "tremor" mesmo parado.
+
     this.cameras.main.startFollow(this.player, false, 0.1, 0.1)
     this.cameras.main.fadeIn(600)
 
-    // --- Lava: colisor de morte ---
     if (lvl.lavaDeath && this.lavaGround) {
       this.physics.add.overlap(this.player, this.lavaGround, this.fallInLava, null, this)
     }
 
-    // --- Controlos ---
     this.cursors = this.input.keyboard.createCursorKeys()
     this.wasd    = this.input.keyboard.addKeys({
       up:    Phaser.Input.Keyboard.KeyCodes.W,
@@ -553,7 +525,13 @@ export class GameScene extends Phaser.Scene {
       right: Phaser.Input.Keyboard.KeyCodes.D
     })
 
-    // --- Pausa (ESC) ---
+    audio.init()
+    audio.startMusic()
+    this.input.keyboard.once('keydown', () => audio.init())
+    this.input.once('pointerdown', () => audio.init())
+
+    this.input.keyboard.on('keydown-M', () => audio.toggleMute())
+
     this.input.keyboard.on('keydown-ESC', () => {
       if (this.transitioning) return
       this.scene.pause()
@@ -565,7 +543,6 @@ export class GameScene extends Phaser.Scene {
       })
     })
 
-    // --- HUD ---
     const lvlLabel = t.level || 'Nível'
     this.add.text(400, 14, `${lvlLabel} ${this.currentLevel + 1}`, {
       fontSize: '18px', fill: '#ffffff',
@@ -587,35 +564,28 @@ export class GameScene extends Phaser.Scene {
       stroke: '#000000', strokeThickness: 3
     }).setScrollFactor(0).setDepth(20)
 
-    // Cronómetro (canto superior direito) — corre enquanto se joga e acumula
-    // entre níveis. Não conta durante a pausa (o update() pára).
     this.timerText = this.add.text(784, 14, `⏱ ${formatTime(this.elapsedMs)}`, {
       fontSize: '20px', fill: '#ffffff',
       stroke: '#000000', strokeThickness: 3
     }).setOrigin(1, 0).setScrollFactor(0).setDepth(20)
   }
 
-  // ─── Fundo ───────────────────────────────────────────────────────────────
-
   drawBackground(lvl, W, H) {
     if (this.currentLevel === 0) {
-      // Faixa de céu mais clara em cima
+
       this.add.rectangle(W / 2, 120, W, 240, 0xaaddff)
 
-      // Nuvens
       for (let x = 150; x < W; x += 500) {
         this.drawCloud(x, 55)
         this.drawCloud(x + 260, 85)
       }
 
-      // Chão: camada de terra
       this.add.rectangle(W / 2, H - 10, W, 60, 0x8B4513)
-      // Camada de relva contínua por cima da terra
+
       this.add.rectangle(W / 2, H - 40, W, 18, 0x4aaa22)
-      // Faixa mais escura no topo da relva
+
       this.add.rectangle(W / 2, H - 48, W, 6, 0x3a9918)
 
-      // Colisores do chão (topo alinhado com a superfície da relva, p/ os pés não afundarem)
       for (let x = 0; x < W; x += 50) {
         const tile = this.add.rectangle(x + 25, H - 29, 50, 40, 0x8B4513)
         tile.setAlpha(0)
@@ -623,22 +593,20 @@ export class GameScene extends Phaser.Scene {
         this.platforms.add(tile)
       }
 
-      // Árvores sobre a relva
       for (let x = 180; x < W; x += 380) {
         this.drawTree(x, H - 48)
       }
 
     } else if (this.currentLevel === 1) {
-      // Fundo caverna com pedras
+
       for (let x = 80; x < W; x += 220) {
         this.drawStalactite(x + (x % 3) * 35, 0)
       }
-      // Chão de pedra
+
       this.add.rectangle(W / 2, H - 10, W, 60, 0x333344)
       this.add.rectangle(W / 2, H - 40, W, 18, 0x555566)
       this.add.rectangle(W / 2, H - 48, W, 6, 0x666677)
 
-      // Colisores do chão (topo alinhado com a superfície, p/ os pés não afundarem)
       for (let x = 0; x < W; x += 50) {
         const tile = this.add.rectangle(x + 25, H - 29, 50, 40, 0x333344)
         tile.setAlpha(0)
@@ -647,15 +615,13 @@ export class GameScene extends Phaser.Scene {
       }
 
     } else if (this.currentLevel === 2) {
-      // Fundo vulcão escuro
+
       this.add.rectangle(W / 2, H / 3, W, (H * 2) / 3, 0x1a0800)
 
-      // Decoração de lava animada no fundo
       for (let x = 0; x < W; x += 100) {
         this.drawLavaDecor(x, H - 20)
       }
 
-      // Partículas de brasa (círculos laranja pequenos)
       for (let x = 50; x < W; x += 200) {
         const ember = this.add.circle(
           x + Phaser.Math.Between(0, 150),
@@ -674,15 +640,13 @@ export class GameScene extends Phaser.Scene {
       }
 
     } else if (this.currentLevel === 3) {
-      // Fundo glaciar — céu gelado
+
       this.add.rectangle(W / 2, 160, W, 320, 0x8ab8d8)
 
-      // Estalactites de gelo no tecto
       for (let x = 60; x < W; x += 180) {
         this.drawIceStalactite(x + (x % 3) * 25, 0)
       }
 
-      // Névoa de neve (círculos brancos semitransparentes)
       for (let x = 100; x < W; x += 300) {
         this.add.circle(
           x + Phaser.Math.Between(0, 200),
@@ -693,10 +657,9 @@ export class GameScene extends Phaser.Scene {
       }
 
     } else {
-      // Fundo espacial
+
       this.add.rectangle(W / 2, H / 2, W, H, 0x000011)
 
-      // Estrelas
       for (let x = 30; x < W; x += 70) {
         this.add.circle(
           x + Phaser.Math.Between(0, 50),
@@ -706,7 +669,6 @@ export class GameScene extends Phaser.Scene {
         )
       }
 
-      // Nebulosas
       for (let x = 300; x < W; x += 700) {
         this.add.circle(x,                          Phaser.Math.Between(60, 300), 90, 0x330066, 0.12)
         this.add.circle(x + 300, Phaser.Math.Between(60, 300), 70, 0x003366, 0.12)
@@ -726,16 +688,16 @@ export class GameScene extends Phaser.Scene {
 
   drawTree(x, y) {
     const g = this.add.graphics()
-    // Tronco
+
     g.fillStyle(0x5c3317)
     g.fillRect(x - 7, y - 50, 14, 50)
-    // Copa base (mais larga)
+
     g.fillStyle(0x1e7a1e)
     g.fillTriangle(x, y - 115, x - 42, y - 50, x + 42, y - 50)
-    // Copa meio
+
     g.fillStyle(0x228B22)
     g.fillTriangle(x, y - 148, x - 30, y - 90, x + 30, y - 90)
-    // Copa topo
+
     g.fillStyle(0x2db52d)
     g.fillTriangle(x, y - 172, x - 20, y - 125, x + 20, y - 125)
   }
@@ -769,10 +731,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   drawGroundTile(x, y, groundColor, grassColor) {
-    // Não usado diretamente — chão é desenhado no drawBackground
-  }
 
-  // ─── Plataformas ─────────────────────────────────────────────────────────
+  }
 
   createPlatform(x, y, width) {
     const colors  = [0x5cb85c, 0x7777bb, 0xcc5500, 0x4499cc, 0xaa2277]
@@ -819,8 +779,6 @@ export class GameScene extends Phaser.Scene {
     this.movingPlatforms.add(plat)
     this.movingPlatformList.push(plat)
   }
-
-  // ─── Texturas ─────────────────────────────────────────────────────────────
 
   createPlayerTexture() {
     this.createSkinTextures()
@@ -892,7 +850,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   createEnemyTexture() {
-    // walker (padrão) — goomba castanho
+
     if (!this.textures.exists('enemy')) {
       const g = this.make.graphics({ x: 0, y: 0, add: false })
       g.fillStyle(0x8B4513); g.fillEllipse(18, 22, 36, 28)
@@ -905,44 +863,41 @@ export class GameScene extends Phaser.Scene {
       g.destroy()
     }
 
-    // flyer — morcego/ave azul com asas
     if (!this.textures.exists('enemy_flyer')) {
       const g = this.make.graphics({ x: 0, y: 0, add: false })
-      g.fillStyle(0x2f80ed); g.fillTriangle(0, 6, 18, 2, 16, 22)    // asa esquerda
-      g.fillStyle(0x2f80ed); g.fillTriangle(48, 6, 30, 2, 32, 22)   // asa direita
-      g.fillStyle(0x56ccf2); g.fillEllipse(24, 16, 26, 24)          // corpo
+      g.fillStyle(0x2f80ed); g.fillTriangle(0, 6, 18, 2, 16, 22)
+      g.fillStyle(0x2f80ed); g.fillTriangle(48, 6, 30, 2, 32, 22)
+      g.fillStyle(0x56ccf2); g.fillEllipse(24, 16, 26, 24)
       g.fillStyle(0xffffff); g.fillCircle(19, 13, 4); g.fillCircle(29, 13, 4)
       g.fillStyle(0x000000); g.fillCircle(20, 13, 2); g.fillCircle(28, 13, 2)
-      g.fillStyle(0xffffff); g.fillTriangle(21, 24, 24, 24, 22, 29) // dente
+      g.fillStyle(0xffffff); g.fillTriangle(21, 24, 24, 24, 22, 29)
       g.fillStyle(0xffffff); g.fillTriangle(24, 24, 27, 24, 26, 29)
       g.generateTexture('enemy_flyer', 48, 32)
       g.destroy()
     }
 
-    // jumper — rã verde de pernas grandes
     if (!this.textures.exists('enemy_jumper')) {
       const g = this.make.graphics({ x: 0, y: 0, add: false })
-      g.fillStyle(0x1e8449); g.fillEllipse(8, 33, 14, 8); g.fillEllipse(28, 33, 14, 8) // pés
-      g.fillStyle(0x2ecc40); g.fillEllipse(18, 20, 34, 26)         // corpo
-      g.fillStyle(0x82e0aa); g.fillEllipse(18, 26, 26, 14)         // barriga
-      g.fillStyle(0xffffff); g.fillCircle(11, 8, 6); g.fillCircle(25, 8, 6) // olhos salientes
+      g.fillStyle(0x1e8449); g.fillEllipse(8, 33, 14, 8); g.fillEllipse(28, 33, 14, 8)
+      g.fillStyle(0x2ecc40); g.fillEllipse(18, 20, 34, 26)
+      g.fillStyle(0x82e0aa); g.fillEllipse(18, 26, 26, 14)
+      g.fillStyle(0xffffff); g.fillCircle(11, 8, 6); g.fillCircle(25, 8, 6)
       g.fillStyle(0x000000); g.fillCircle(11, 9, 3); g.fillCircle(25, 9, 3)
-      g.fillStyle(0x145a32); g.fillRect(10, 23, 16, 2)             // boca
+      g.fillStyle(0x145a32); g.fillRect(10, 23, 16, 2)
       g.generateTexture('enemy_jumper', 36, 38)
       g.destroy()
     }
 
-    // chaser — bicho vermelho agressivo, com chifres e dentes
     if (!this.textures.exists('enemy_chaser')) {
       const g = this.make.graphics({ x: 0, y: 0, add: false })
-      g.fillStyle(0x7b241c); g.fillTriangle(4, 8, 13, 1, 12, 13)   // chifre esq.
-      g.fillStyle(0x7b241c); g.fillTriangle(34, 8, 25, 1, 26, 13)  // chifre dir.
-      g.fillStyle(0xc0392b); g.fillEllipse(19, 22, 36, 28)         // corpo
+      g.fillStyle(0x7b241c); g.fillTriangle(4, 8, 13, 1, 12, 13)
+      g.fillStyle(0x7b241c); g.fillTriangle(34, 8, 25, 1, 26, 13)
+      g.fillStyle(0xc0392b); g.fillEllipse(19, 22, 36, 28)
       g.fillStyle(0xe74c3c); g.fillEllipse(19, 20, 28, 22)
-      g.fillStyle(0xffff00); g.fillTriangle(8, 14, 18, 12, 9, 20)  // olhos zangados
+      g.fillStyle(0xffff00); g.fillTriangle(8, 14, 18, 12, 9, 20)
       g.fillStyle(0xffff00); g.fillTriangle(30, 14, 20, 12, 29, 20)
       g.fillStyle(0x000000); g.fillCircle(12, 16, 2); g.fillCircle(26, 16, 2)
-      g.fillStyle(0xffffff); g.fillTriangle(11, 29, 15, 29, 13, 34) // dentes
+      g.fillStyle(0xffffff); g.fillTriangle(11, 29, 15, 29, 13, 34)
       g.fillStyle(0xffffff); g.fillTriangle(23, 29, 27, 29, 25, 34)
       g.generateTexture('enemy_chaser', 38, 38)
       g.destroy()
@@ -952,21 +907,19 @@ export class GameScene extends Phaser.Scene {
   createDoorTexture() {
     if (this.textures.exists('door')) return
     const g = this.make.graphics({ x: 0, y: 0, add: false })
-    // Frame
+
     g.fillStyle(0x8B4513); g.fillRect(0, 0, 60, 90)
-    // Interior
+
     g.fillStyle(0x4169e1); g.fillRect(5, 5, 50, 85)
-    // Topo decorativo
+
     g.fillStyle(0xFFD700); g.fillRect(20, 5, 20, 5)
-    // Maçaneta
+
     g.fillStyle(0xFFD700); g.fillCircle(42, 48, 5)
-    // Estrela
+
     g.fillStyle(0xFFD700); g.fillTriangle(30, 8, 22, 30, 38, 30)
     g.generateTexture('door', 60, 90)
     g.destroy()
   }
-
-  // ─── Objetos ──────────────────────────────────────────────────────────────
 
   createCoin(x, y) {
     const coin = this.physics.add.staticSprite(x, y, 'coin')
@@ -992,16 +945,14 @@ export class GameScene extends Phaser.Scene {
     enemy.type      = type
     enemy.nextJump  = 0
 
-    // O voador anda no ar (sem gravidade); cada tipo tem a sua própria skin/textura.
     if (type === 'flyer') enemy.body.setAllowGravity(false)
 
     enemy.body.setVelocityX(speed)
-    // O voador não colide com plataformas (anda no ar); os restantes sim.
+
     if (type !== 'flyer') this.enemyGroup.add(enemy)
     this.enemies.push(enemy)
   }
 
-  // Espinhos: fila de triângulos com base assente em y; zona de morte invisível.
   createSpikes(x, y, w) {
     const spikeW = 14
     const count  = Math.max(1, Math.floor(w / spikeW))
@@ -1025,7 +976,6 @@ export class GameScene extends Phaser.Scene {
     this.spikes.add(zone)
   }
 
-  // Plataforma que cai: ao ser pisada abana, desaba e reaparece passado uns segundos.
   createFallingPlatform(x, y, w) {
     const plat = this.add.rectangle(x, y, w, 20, 0xc97b3c)
     this.physics.add.existing(plat, true)
@@ -1033,7 +983,6 @@ export class GameScene extends Phaser.Scene {
     plat.fallState = 'idle'
     plat.origY     = y
 
-    // Faixa clara no topo + fendas para se distinguir das normais
     const top = this.add.rectangle(x, y - 6, w, 7, 0xe09b5c).setDepth(2)
     const crack = this.add.graphics().setDepth(2)
     crack.lineStyle(1, 0x000000, 0.35)
@@ -1045,19 +994,19 @@ export class GameScene extends Phaser.Scene {
   }
 
   touchFallingPlatform(player, plat) {
-    // Só dispara quando o jogador está mesmo por cima e a plataforma está estável
+
     if (plat.fallState !== 'idle') return
     if (!player.body.blocked.down || player.y > plat.y) return
 
     plat.fallState = 'shaking'
-    // Abanar (visual)
+
     this.tweens.add({
       targets: [plat, ...plat.deco],
       x: '+=3', duration: 45, yoyo: true, repeat: 9
     })
 
     this.time.delayedCall(550, () => {
-      // Desaba: desliga colisão e cai
+
       plat.fallState = 'falling'
       plat.body.enable = false
       this.tweens.add({
@@ -1065,7 +1014,6 @@ export class GameScene extends Phaser.Scene {
         y: '+=420', alpha: 0, duration: 700, ease: 'Quad.easeIn'
       })
 
-      // Reaparece no sítio original passado uns segundos
       this.time.delayedCall(2800, () => {
         this.tweens.killTweensOf([plat, ...plat.deco])
         plat.y = plat.origY
@@ -1079,10 +1027,9 @@ export class GameScene extends Phaser.Scene {
     })
   }
 
-  // ─── Eventos de jogo ──────────────────────────────────────────────────────
-
   collectCoin(player, coin) {
     coin.destroy()
+    audio.coin()
     this.score += 10
     this.coinsCollected += 1
     const t = getLang()
@@ -1111,7 +1058,6 @@ export class GameScene extends Phaser.Scene {
     })
   }
 
-  // Espinhos partilham a mesma penalização da lava (perder uma vida + respawn)
   hitHazard() {
     this.fallInLava()
   }
@@ -1119,17 +1065,19 @@ export class GameScene extends Phaser.Scene {
   fallInLava() {
     if (this.invincible || this.transitioning) return
     this.lives--
+    audio.hurt()
     this.updateLivesHUD()
     this.cameras.main.shake(300, 0.015)
 
     if (this.lives <= 0) {
       this.transitioning = true
+      audio.stopMusic()
       this.cameras.main.fadeOut(600)
       this.time.delayedCall(600, () => {
         this.scene.start('GameOverScene', { score: this.score, victory: false })
       })
     } else {
-      // Respawna na plataforma inicial do nível
+
       this.invincible = true
       this.cameras.main.fadeOut(400)
       this.time.delayedCall(400, () => {
@@ -1153,11 +1101,13 @@ export class GameScene extends Phaser.Scene {
         if (falling && above) {
           enemy.destroy()
           this.enemies = this.enemies.filter(e => e !== enemy)
+          audio.stomp()
           this.player.body.setVelocityY(-450)
           this.score += 20
           this.scoreText.setText(`${getLang().score}: ${this.score}`)
         } else {
           this.lives--
+          audio.hurt()
           this.updateLivesHUD()
           this.invincible = true
           this.player.body.setVelocityX(-300)
@@ -1165,6 +1115,7 @@ export class GameScene extends Phaser.Scene {
           this.time.delayedCall(1000, () => { this.invincible = false })
           if (this.lives <= 0) {
             this.transitioning = true
+            audio.stopMusic()
             this.cameras.main.fadeOut(600)
             this.time.delayedCall(600, () => {
               this.scene.start('GameOverScene', { score: this.score, victory: false })
@@ -1180,11 +1131,8 @@ export class GameScene extends Phaser.Scene {
     this.livesText.setText(`${t.lives}: ${'❤️'.repeat(Math.max(0, this.lives))}`)
   }
 
-  // ─── Loop principal ───────────────────────────────────────────────────────
-
   update(time, delta) {
-    // Cronómetro: acumula o tempo de jogo. Como o update() não corre durante a
-    // pausa nem na transição/derrota, o tempo parado não conta.
+
     if (!this.transitioning) {
       this.elapsedMs += delta
       this.timerText.setText(`⏱ ${formatTime(this.elapsedMs)}`)
@@ -1195,26 +1143,20 @@ export class GameScene extends Phaser.Scene {
     const jump     = this.cursors.up.isDown || this.cursors.space.isDown || this.wasd.up.isDown
     const onGround = this.player.body.blocked.down
 
-    // Parallax
     if (this.parallaxLayers.length > 0) {
       const camX = this.cameras.main.scrollX
       this.parallaxLayers.forEach(l => { l.tilePositionX = camX * l.parallaxFactor })
     }
 
-    // A maioria dos sprites está desenhada virada para a ESQUERDA, por isso
-    // andar à direita exige flip horizontal. Sprites já virados à direita
-    // (spriteFacesRight) usam o flip inverso.
     const flipLeft  = this.spriteFacesRight ? true  : false
     const flipRight = this.spriteFacesRight ? false : true
     if (left)       { this.player.body.setVelocityX(-this.charSpeed); this.player.setFlipX(flipLeft) }
     else if (right) { this.player.body.setVelocityX(this.charSpeed);  this.player.setFlipX(flipRight) }
-    // Parado: volta a ficar virado para a frente (direita) por definição,
-    // em vez de manter a última direção em que andou.
+
     else            { this.player.body.setVelocityX(0); this.player.setFlipX(flipRight) }
 
-    if (jump && onGround) this.player.body.setVelocityY(-this.charJump)
+    if (jump && onGround) { this.player.body.setVelocityY(-this.charJump); audio.jump() }
 
-    // Animações da spritesheet (só quando há frames configurados)
     if (this.framesConfigured) {
       if (!onGround) {
         this.player.anims.stop()
@@ -1229,28 +1171,25 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // Plataformas móveis
     this.movingPlatformList.forEach(plat => {
       if (plat.x > plat.startX + plat.range) plat.moveDir = -1
       if (plat.x < plat.startX - plat.range) plat.moveDir = 1
       plat.body.setVelocityX(plat.movSpeed * plat.moveDir)
     })
 
-    // Inimigos — comportamento por tipo
     this.enemies.forEach(enemy => {
       if (!enemy.active) return
 
-      // Inverte a direção nos limites da patrulha (comum a quase todos)
       if (enemy.x > enemy.startX + enemy.patrol) enemy.direction = -1
       if (enemy.x < enemy.startX - enemy.patrol) enemy.direction = 1
 
       if (enemy.type === 'flyer') {
-        // Voa: patrulha na horizontal e oscila na vertical (onda)
+
         enemy.body.setVelocityX(enemy.speed * enemy.direction)
         enemy.y = enemy.startY + Math.sin(this.time.now / 300 + enemy.startX) * 45
 
       } else if (enemy.type === 'chaser') {
-        // Persegue o jogador quando está perto; senão patrulha normal
+
         const dist = this.player.x - enemy.x
         if (Math.abs(dist) < 260) {
           enemy.direction = dist > 0 ? 1 : -1
@@ -1260,7 +1199,7 @@ export class GameScene extends Phaser.Scene {
         }
 
       } else if (enemy.type === 'jumper') {
-        // Anda e salta periodicamente quando está no chão
+
         enemy.body.setVelocityX(enemy.speed * enemy.direction)
         if (enemy.body.blocked.down && this.time.now > enemy.nextJump) {
           enemy.body.setVelocityY(-340)
@@ -1268,7 +1207,7 @@ export class GameScene extends Phaser.Scene {
         }
 
       } else {
-        // walker (padrão)
+
         enemy.body.setVelocityX(enemy.speed * enemy.direction)
       }
 
@@ -1277,7 +1216,6 @@ export class GameScene extends Phaser.Scene {
 
     this.checkEnemyCollisions()
 
-    // Morte por cair fora do mundo
     if (this.player.y > 520) this.fallInLava()
   }
 }

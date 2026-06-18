@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { getLang, getCurrentLang, getActiveSkinIndex } from './MenuScene.js'
 import { formatTime } from './GameScene.js'
 import { SKINS, SPRITE_FRAMES } from '../assetConfig.js'
+import { audio } from '../audio.js'
 
 export class GameOverScene extends Phaser.Scene {
   constructor() { super('GameOverScene') }
@@ -18,14 +19,13 @@ export class GameOverScene extends Phaser.Scene {
     const h  = this.scale.height
     const cx = w / 2
 
-    // Fundo no mesmo estilo Mario do menu: céu solarengo na vitória,
-    // pôr do sol mais dramático na derrota.
+    if (this.victory) audio.winJingle()
+    else              audio.loseJingle()
+
     this.drawBackground(w, h, this.victory)
 
-    // --- Personagem selecionada a reagir ao resultado ---
     this.drawCharacter(cx, 192)
 
-    // --- Título com contorno e sombra, como no menu ---
     const title = this.add.text(cx, 96, this.victory ? t.victory : t.gameover, {
       fontSize: '58px', fontStyle: 'bold',
       fill:   this.victory ? '#FFE34D' : '#FF5A4D',
@@ -33,11 +33,9 @@ export class GameOverScene extends Phaser.Scene {
       strokeThickness: 9
     }).setOrigin(0.5).setShadow(0, 5, 'rgba(0,0,0,0.35)', 6)
 
-    // Pequena animação de entrada do título
     title.setScale(0.4)
     this.tweens.add({ targets: title, scale: 1, duration: 420, ease: 'Back.out' })
 
-    // --- Painel das estatísticas ---
     const panelY = 270
     const panel = this.add.graphics()
     panel.fillStyle(0x000000, 0.28)
@@ -50,7 +48,6 @@ export class GameOverScene extends Phaser.Scene {
       stroke: '#1B3A6B', strokeThickness: 4
     }).setOrigin(0.5)
 
-    // Só na vitória se mostra o tempo total.
     if (this.victory) {
       this.add.text(cx, panelY + 22, `⏱ ${t.finalTime}: ${formatTime(this.finalTime)}`, {
         fontSize: '21px', fontStyle: 'bold', fill: '#FFE34D',
@@ -58,7 +55,6 @@ export class GameOverScene extends Phaser.Scene {
       }).setOrigin(0.5)
     }
 
-    // --- Botões (empilhados na vertical para nunca se sobreporem) ---
     const playLabel = getCurrentLang() === 'pt' ? '↻  Jogar de novo' : '↻  Play again'
     const menuLabel = t.backToMenu
 
@@ -73,7 +69,6 @@ export class GameOverScene extends Phaser.Scene {
       onClick: () => this.scene.start('MenuScene')
     })
 
-    // Atalho de teclado mantido
     this.add.text(cx, 462, t.restart, {
       fontSize: '15px', fill: '#ffffff', stroke: '#000000', strokeThickness: 3
     }).setOrigin(0.5).setAlpha(0.85)
@@ -81,7 +76,6 @@ export class GameOverScene extends Phaser.Scene {
     this.input.keyboard.once('keydown-R', () => this.scene.start('MenuScene'))
   }
 
-  // Desenha o sprite "idle" da personagem ativa e dá-lhe vida conforme o resultado
   drawCharacter(x, y) {
     const skin = SKINS[getActiveSkinIndex()]
     let img
@@ -100,20 +94,18 @@ export class GameOverScene extends Phaser.Scene {
     img.setOrigin(0.5)
 
     if (this.victory) {
-      // Salta a festejar
+
       this.tweens.add({
         targets: img, y: y - 22, duration: 380,
         yoyo: true, repeat: -1, ease: 'Quad.inOut'
       })
     } else {
-      // Tombado e baço na derrota
+
       img.setAngle(90).setTint(0x99889a).setY(y + 18)
     }
     return img
   }
 
-  // Fundo estilo Mario: céu em degradé + nuvens + colinas + chão.
-  // victory=true → dia solarengo;  victory=false → pôr do sol.
   drawBackground(w, h, victory) {
     const g = this.add.graphics()
     if (victory) {
@@ -124,18 +116,15 @@ export class GameOverScene extends Phaser.Scene {
       g.fillRect(0, 0, w, h)
     }
 
-    // Colinas ao fundo
     g.fillStyle(victory ? 0x6FCF5B : 0x4A5A3A, 1)
     g.fillEllipse(w * 0.78, h + 60, 360, 220)
     g.fillEllipse(w * 0.18, h + 80, 300, 200)
 
-    // Chão
     g.fillStyle(victory ? 0x57B84A : 0x3E5236, 1)
     g.fillRect(0, h - 26, w, 26)
     g.fillStyle(victory ? 0x3E9135 : 0x2C3A26, 1)
     g.fillRect(0, h - 26, w, 6)
 
-    // Nuvens
     const cloudAlpha = victory ? 0.95 : 0.5
     this.drawCloud(g, 120, 80, 1.0, cloudAlpha)
     this.drawCloud(g, 660, 60, 0.8, cloudAlpha)
@@ -151,7 +140,6 @@ export class GameOverScene extends Phaser.Scene {
     g.fillRect(x - 4 * s, y + 2 * s, 60 * s, 18 * s)
   }
 
-  // Botão arredondado com borda, sombra, brilho e hover — igual ao do menu.
   makeButton(x, y, label, opts) {
     const { height, fontSize, color, hover, border, onClick } = opts
     const container = this.add.container(x, y)

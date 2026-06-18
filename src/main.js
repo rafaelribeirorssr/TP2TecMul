@@ -5,13 +5,13 @@ import { CharacterScene } from './scenes/CharacterScene.js'
 import { GameScene } from './scenes/GameScene.js'
 import { GameOverScene } from './scenes/GameOverScene.js'
 import { PauseScene } from './scenes/PauseScene.js'
- 
+
 const config = {
   type: Phaser.AUTO,
   scale: {
-    mode: Phaser.Scale.FIT,           // estica para preencher a janela, mantendo a proporção
+    mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
-    width: 800,                        // resolução interna do jogo (não mexer)
+    width: 800,
     height: 500
   },
   backgroundColor: '#5c94fc',
@@ -21,5 +21,5 @@ const config = {
   },
   scene: [BootScene, MenuScene, CharacterScene, GameScene, GameOverScene, PauseScene]
 }
- 
+
 new Phaser.Game(config)

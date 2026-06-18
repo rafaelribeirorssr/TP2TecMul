@@ -5,7 +5,7 @@ export class BootScene extends Phaser.Scene {
   constructor() { super('BootScene') }
 
   preload() {
-    // Carrega imagens configuradas em assetConfig.js
+
     BG_LAYERS.forEach(levelLayers =>
       levelLayers.forEach(layer => {
         if (layer.url) this.load.image(layer.key, layer.url)

@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import pt from '../locales/pt.json'
 import en from '../locales/en.json'
 import { SKINS, SPRITE_FRAMES } from '../assetConfig.js'
+import { audio } from '../audio.js'
 
 const langs = { pt, en }
 let currentLang = 'pt'
@@ -25,28 +26,38 @@ export class MenuScene extends Phaser.Scene {
 
     this.drawBackground(w, h)
 
-    // --- Título ---
+    audio.init()
+    audio.startMusic()
+    this.input.once('pointerdown', () => audio.init())
+    this.input.keyboard.once('keydown', () => audio.init())
+
+    const soundBtn = this.makeButton(w - 34, 26, audio.muted ? '🔇' : '🔊', {
+      width: 46, height: 38, fontSize: 20,
+      color: 0x57606F, hover: 0x747D8C, border: 0x3C4453,
+      onClick: () => {
+        const muted = audio.toggleMute()
+        const txt = soundBtn.list.find(c => c.type === 'Text')
+        if (txt) txt.setText(muted ? '🔇' : '🔊')
+      }
+    })
+
     this.add.text(cx, 52, t.title, {
       fontSize: '46px', fontStyle: 'bold', fill: '#FFE34D',
       stroke: '#C0392B', strokeThickness: 8
     }).setOrigin(0.5).setShadow(0, 5, 'rgba(0,0,0,0.35)', 6)
 
-    // --- Iniciar jogo ---
     this.makeButton(cx, 116, `▶  ${t.start}`, {
       width: 230, height: 50, fontSize: 26,
       color: 0x3CB043, hover: 0x57D85F, border: 0x1E7A2A,
       onClick: () => this.scene.start('GameScene', { level: 0 })
     })
 
-    // --- Selecionar nível ---
     const selectLabel = currentLang === 'pt' ? 'Escolher nível' : 'Select level'
     this.add.text(cx, 168, selectLabel, {
       fontSize: '15px', fontStyle: 'bold', fill: '#ffffff',
       stroke: '#1B3A6B', strokeThickness: 3
     }).setOrigin(0.5)
 
-    // Espaçamento (128) maior que a largura máxima do botão para nunca se
-    // sobreporem, mesmo quando o texto ("Nível 5") alarga o botão.
     const xs = [cx - 256, cx - 128, cx, cx + 128, cx + 256]
     for (let i = 0; i < 5; i++) {
       this.makeButton(xs[i], 205, `${t.level} ${i + 1}`, {
@@ -56,7 +67,6 @@ export class MenuScene extends Phaser.Scene {
       })
     }
 
-    // --- Botão: escolher personagem (abre o ecrã de seleção) ---
     const skinLabel = currentLang === 'pt' ? 'Personagem' : 'Character'
     this.add.text(cx, 250, skinLabel, {
       fontSize: '15px', fontStyle: 'bold', fill: '#ffffff',
@@ -72,16 +82,13 @@ export class MenuScene extends Phaser.Scene {
       onClick: () => this.scene.start('CharacterScene')
     })
 
-    // Mini-preview da personagem atualmente selecionada
     this.drawSkinPreview(activeSkinIndex, cx, 330)
 
-    // --- Controlos ---
     this.add.text(cx, 366, t.controls, {
       fontSize: '13px', fill: '#ffffff',
       stroke: '#1B3A6B', strokeThickness: 3
     }).setOrigin(0.5)
 
-    // --- Botões de idioma ---
     this.makeButton(cx - 52, 402, '🇵🇹 PT', {
       width: 80, height: 32, fontSize: 16,
       color:  currentLang === 'pt' ? 0xF5A623 : 0x57606F,
@@ -97,7 +104,6 @@ export class MenuScene extends Phaser.Scene {
       onClick: () => { setLang('en'); this.scene.restart() }
     })
 
-    // --- Sair ---
     const quitLabel = currentLang === 'pt' ? '✕  Sair' : '✕  Quit'
     this.makeButton(cx, 450, quitLabel, {
       width: 130, height: 38, fontSize: 19,
@@ -106,7 +112,6 @@ export class MenuScene extends Phaser.Scene {
     })
   }
 
-  // Desenha o sprite "idle" de uma personagem centrado em (x, y)
   drawSkinPreview(i, x, y) {
     const skin = SKINS[i]
     const previewColors = [0xcc0000, 0x111111, 0x6677aa, 0x6600cc]
@@ -127,24 +132,20 @@ export class MenuScene extends Phaser.Scene {
     return g
   }
 
-  // Fundo estilo Mario: céu azul em degradé + nuvens + colina + chão
   drawBackground(w, h) {
     const g = this.add.graphics()
     g.fillGradientStyle(0x5DA9FF, 0x5DA9FF, 0x9BD0FF, 0x9BD0FF, 1)
     g.fillRect(0, 0, w, h)
 
-    // Colina ao fundo
     g.fillStyle(0x6FCF5B, 1)
     g.fillEllipse(w * 0.78, h + 60, 360, 220)
     g.fillEllipse(w * 0.18, h + 80, 300, 200)
 
-    // Chão
     g.fillStyle(0x57B84A, 1)
     g.fillRect(0, h - 26, w, 26)
     g.fillStyle(0x3E9135, 1)
     g.fillRect(0, h - 26, w, 6)
 
-    // Nuvens
     this.drawCloud(g, 120, 90, 1.0)
     this.drawCloud(g, 640, 70, 0.8)
     this.drawCloud(g, 700, 250, 1.1)
@@ -159,18 +160,15 @@ export class MenuScene extends Phaser.Scene {
     g.fillRect(x - 4 * s, y + 2 * s, 60 * s, 18 * s)
   }
 
-  // Botão arredondado, colorido, com borda, sombra e animação de hover
   makeButton(x, y, label, opts) {
     const { height, fontSize, color, hover, border, onClick } = opts
     const container = this.add.container(x, y)
 
-    // Texto primeiro, para a largura do botão se ajustar a ele
     const text = this.add.text(0, 0, label, {
       fontSize: `${fontSize}px`, fontStyle: 'bold', fill: '#ffffff',
       stroke: '#000000', strokeThickness: 3
     }).setOrigin(0.5)
 
-    // Largura = mínimo pedido, mas sempre com folga suficiente para o texto
     const width = Math.max(opts.width, Math.ceil(text.width) + 36)
 
     const shadow = this.add.graphics()
@@ -184,13 +182,12 @@ export class MenuScene extends Phaser.Scene {
       bg.fillRoundedRect(-width / 2, -height / 2, width, height, 12)
       bg.lineStyle(3, border, 1)
       bg.strokeRoundedRect(-width / 2, -height / 2, width, height, 12)
-      // brilho no topo
+
       bg.fillStyle(0xffffff, 0.18)
       bg.fillRoundedRect(-width / 2 + 4, -height / 2 + 4, width - 8, height / 2 - 4, 8)
     }
     draw(color)
 
-    // Ordem: sombra, fundo e texto por cima
     container.add([shadow, bg, text])
     container.setSize(width, height)
     container.setInteractive(
@@ -199,7 +196,6 @@ export class MenuScene extends Phaser.Scene {
       { useHandCursor: true }
     )
 
-    // Animação de escala fiável: matar tweens antigos antes de criar novos
     const scaleTo = (s) => {
       this.tweens.killTweensOf(container)
       this.tweens.add({ targets: container, scale: s, duration: 80, ease: 'Quad.out' })

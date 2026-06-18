@@ -13,7 +13,6 @@ export class CharacterScene extends Phaser.Scene {
 
     this.drawBackground(w, h)
 
-    // --- Título ---
     this.add.text(cx, 38, pt ? 'Escolher personagem' : 'Choose your character', {
       fontSize: '34px', fontStyle: 'bold', fill: '#FFE34D',
       stroke: '#C0392B', strokeThickness: 7
@@ -25,11 +24,9 @@ export class CharacterScene extends Phaser.Scene {
       fontSize: '13px', fill: '#ffffff', stroke: '#1B3A6B', strokeThickness: 3
     }).setOrigin(0.5)
 
-    // --- Cartas das personagens ---
     const centers = [cx - 276, cx - 92, cx + 92, cx + 276]
     SKINS.forEach((skin, i) => this.drawCard(skin, i, centers[i], pt))
 
-    // --- Voltar ---
     this.makeButton(cx, 476, pt ? '◀  Voltar' : '◀  Back', {
       width: 150, height: 34, fontSize: 17,
       color: 0xE0392B, hover: 0xF0564A, border: 0xA81F14,
@@ -38,13 +35,12 @@ export class CharacterScene extends Phaser.Scene {
   }
 
   drawCard(skin, i, centerX, pt) {
-    const T        = 92            // topo da carta
-    const CW       = 168           // largura
-    const CH       = 332           // altura
+    const T        = 92
+    const CW       = 168
+    const CH       = 332
     const left     = centerX - CW / 2
     const selected = getActiveSkinIndex() === i
 
-    // Fundo da carta
     const bg = this.add.graphics()
     const drawBg = (fill, borderCol) => {
       bg.clear()
@@ -55,17 +51,14 @@ export class CharacterScene extends Phaser.Scene {
     }
     drawBg(selected ? 0x2c3e66 : 0x223052, selected ? 0xFFD24A : 0x3f5488)
 
-    // Selo "selecionado"
     if (selected) {
       this.add.text(centerX, T + 14, pt ? '★ SELECIONADO' : '★ SELECTED', {
         fontSize: '12px', fontStyle: 'bold', fill: '#FFD24A'
       }).setOrigin(0.5)
     }
 
-    // Preview da personagem
     this.drawSkinPreview(i, centerX, T + 66)
 
-    // Nome + função
     this.add.text(centerX, T + 108, pt ? skin.label_pt : skin.label_en, {
       fontSize: '20px', fontStyle: 'bold', fill: '#ffffff',
       stroke: '#000000', strokeThickness: 3
@@ -75,19 +68,16 @@ export class CharacterScene extends Phaser.Scene {
       fontSize: '14px', fontStyle: 'bold', fill: '#FFD24A'
     }).setOrigin(0.5)
 
-    // Barras de estatísticas
     const barL = left + 14
     const barR = left + CW - 14
     this.drawStatBar(barL, barR, T + 168, pt ? 'Salto'      : 'Jump',  skin.jump,  STAT_RANGES.jump,  0x3CB043)
     this.drawStatBar(barL, barR, T + 210, pt ? 'Velocidade' : 'Speed', skin.speed, STAT_RANGES.speed, 0x2E86DE)
     this.drawStatBar(barL, barR, T + 252, pt ? 'Vidas'      : 'Lives', skin.lives, STAT_RANGES.lives, 0xE0556B)
 
-    // Mostra o nº de vidas em texto (mais claro que a barra)
     this.add.text(barR, T + 252 - 14, `${skin.lives} ❤️`, {
       fontSize: '12px', fill: '#ffffff'
     }).setOrigin(1, 0.5)
 
-    // Carta clicável: seleciona e volta ao menu
     const zone = this.add.rectangle(centerX, T + CH / 2, CW, CH, 0x000000, 0).setInteractive({ useHandCursor: true })
     zone.on('pointerover', () => { if (!selected) drawBg(0x32436e, 0x6f8ac0) })
     zone.on('pointerout',  () => { if (!selected) drawBg(0x223052, 0x3f5488) })
@@ -145,7 +135,6 @@ export class CharacterScene extends Phaser.Scene {
     g.fillRect(0, h - 22, w, 22)
   }
 
-  // Botão arredondado com hover (versão compacta do usado no menu)
   makeButton(x, y, label, opts) {
     const { height, fontSize, color, hover, border, onClick } = opts
     const container = this.add.container(x, y)
@@ -192,4 +181,3 @@ export class CharacterScene extends Phaser.Scene {
     return container
   }
 }
-

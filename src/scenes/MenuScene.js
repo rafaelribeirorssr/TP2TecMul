@@ -45,7 +45,9 @@ export class MenuScene extends Phaser.Scene {
       stroke: '#1B3A6B', strokeThickness: 3
     }).setOrigin(0.5)
 
-    const xs = [cx - 220, cx - 110, cx, cx + 110, cx + 220]
+    // Espaçamento (128) maior que a largura máxima do botão para nunca se
+    // sobreporem, mesmo quando o texto ("Nível 5") alarga o botão.
+    const xs = [cx - 256, cx - 128, cx, cx + 128, cx + 256]
     for (let i = 0; i < 5; i++) {
       this.makeButton(xs[i], 205, `${t.level} ${i + 1}`, {
         width: 96, height: 40, fontSize: 18,

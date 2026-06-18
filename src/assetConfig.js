@@ -76,8 +76,10 @@ export const STAT_RANGES = {
 //
 // As folhas yi_*.png foram geradas a partir da imagem original
 // "Mario, Luigi, Wario & Waluigi (Yoshi's Island-Style).png": fundo removido,
-// frames todos virados para a esquerda, dispostos em 5 células de 27x33 px:
+// frames todos virados para a ESQUERDA, dispostos em 5 células de 27x33 px:
 // [idle | walk0 | walk1 | walk2 | jump]
+// (O frame idle vinha do original virado à direita; foi espelhado no PNG para
+//  ficar coerente com os frames de andar/saltar, todos virados à esquerda.)
 const YI_FRAMES = {
   display: { w: 40, h: 50 },
   idle: { x: 0, y: 0, w: 27, h: 33 },

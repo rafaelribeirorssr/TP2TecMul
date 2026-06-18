@@ -12,6 +12,7 @@
     "vite": "^8.0.12"
   },
   "dependencies": {
-    "phaser": "^4.1.0"
+    "phaser": "^4.1.0",
+    "strip-comments": "^2.0.1"
   }
 }

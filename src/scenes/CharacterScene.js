@@ -192,3 +192,4 @@ export class CharacterScene extends Phaser.Scene {
     return container
   }
 }
+

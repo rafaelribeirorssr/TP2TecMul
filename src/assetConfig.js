@@ -28,15 +28,28 @@ export const BG_LAYERS = [
 ]
 
 export const SKINS = [
-  { key: 'skin_img0', url: '/yi_mario.png',   label_pt: 'Mario',   label_en: 'Mario',
-    role_pt: 'Equilibrado', role_en: 'Balanced',   jump: 470, speed: 230, lives: 3 },
-  { key: 'skin_img1', url: '/yi_luigi.png',   label_pt: 'Luigi',   label_en: 'Luigi',
-    role_pt: 'Saltador',    role_en: 'High Jumper', jump: 590, speed: 210, lives: 3 },
-  { key: 'skin_img2', url: '/yi_wario.png',   label_pt: 'Wario',   label_en: 'Wario',
-    role_pt: 'Resistente',  role_en: 'Tank',        jump: 470, speed: 190, lives: 6 },
-  { key: 'skin_img3', url: '/yi_waluigi.png', label_pt: 'Waluigi', label_en: 'Waluigi',
-    role_pt: 'Veloz',       role_en: 'Speedster',   jump: 450, speed: 310, lives: 2 },
+  { key: 'skin_img0', url: '/yi_mario.png',   label_pt: 'Mario',   label_en: 'Mario',   label_zh: '马力欧',
+    role_pt: 'Equilibrado', role_en: 'Balanced',   role_zh: '平衡',     jump: 470, speed: 230, lives: 3 },
+  { key: 'skin_img1', url: '/yi_luigi.png',   label_pt: 'Luigi',   label_en: 'Luigi',   label_zh: '路易吉',
+    role_pt: 'Saltador',    role_en: 'High Jumper', role_zh: '跳跃高手', jump: 590, speed: 210, lives: 3 },
+  { key: 'skin_img2', url: '/yi_wario.png',   label_pt: 'Wario',   label_en: 'Wario',   label_zh: '瓦力欧',
+    role_pt: 'Resistente',  role_en: 'Tank',        role_zh: '坦克',     jump: 470, speed: 190, lives: 6 },
+  { key: 'skin_img3', url: '/yi_waluigi.png', label_pt: 'Waluigi', label_en: 'Waluigi', label_zh: '瓦路易吉',
+    role_pt: 'Veloz',       role_en: 'Speedster',   role_zh: '速度型',   jump: 450, speed: 310, lives: 2 },
 ]
+
+// Enemy skins cut from Dotshima's Mario enemy sheet
+// (public/mario_enemies_sprites_by_dotshima_d1fv7zp-375w-2x.jpg).
+// dispH is the target on-screen height in px; the sprite is scaled uniformly to it
+// so the physics body scales too, keeping the original aspect ratio.
+export const ENEMY_SKINS = {
+  walker: { key: 'eskin_walker', url: '/enemy_walker.png', dispH: 36 }, // brown Goomba
+  jumper: { key: 'eskin_jumper', url: '/enemy_jumper.png', dispH: 38 }, // black Bob-omb
+  // yellow/green Koopa Troopa with a real walk cycle (6-frame sheet)
+  chaser: { key: 'eskin_chaser', url: '/enemy_koopa_walk.png', dispH: 54,
+            sheet: { frameW: 25, frameH: 37, frames: 6, rate: 10 } },
+  flyer:  { key: 'eskin_flyer',  url: '/enemy_flyer.png',  dispH: 42 }, // propeller Shy Guy
+}
 
 export const STAT_RANGES = {
   jump:  { min: 400, max: 620 },

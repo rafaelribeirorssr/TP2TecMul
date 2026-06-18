@@ -15,5 +15,18 @@
   "paused": "Pausa",
   "resume": "Continuar",
   "restartLevel": "Reiniciar nível",
-  "backToMenu": "Menu inicial"
+  "backToMenu": "Menu inicial",
+  "selectLevel": "Escolher nível",
+  "character": "Personagem",
+  "quit": "Sair",
+  "quitMessage": "Obrigado por jogar! Já podes fechar este separador.",
+  "chooseCharacter": "Escolher personagem",
+  "chooseHint": "Cada uma tem salto, velocidade e vidas diferentes — escolhe o teu estilo!",
+  "selected": "SELECIONADO",
+  "back": "Voltar",
+  "jump": "Salto",
+  "speed": "Velocidade",
+  "playAgain": "Jogar de novo",
+  "soundOn": "Som: Ligado",
+  "soundOff": "Som: Desligado"
 }

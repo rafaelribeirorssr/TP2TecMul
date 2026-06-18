@@ -1,6 +1,6 @@
 import Phaser from 'phaser'
 import { SKINS, SPRITE_FRAMES, STAT_RANGES } from '../assetConfig.js'
-import { getActiveSkinIndex, setActiveSkinIndex, getCurrentLang } from './MenuScene.js'
+import { getActiveSkinIndex, setActiveSkinIndex, getLang, charText } from './MenuScene.js'
 
 export class CharacterScene extends Phaser.Scene {
   constructor() { super('CharacterScene') }
@@ -9,32 +9,30 @@ export class CharacterScene extends Phaser.Scene {
     const w  = this.scale.width
     const h  = this.scale.height
     const cx = w / 2
-    const pt = getCurrentLang() === 'pt'
+    const t  = getLang()
 
     this.drawBackground(w, h)
 
-    this.add.text(cx, 38, pt ? 'Escolher personagem' : 'Choose your character', {
+    this.add.text(cx, 38, t.chooseCharacter, {
       fontSize: '34px', fontStyle: 'bold', fill: '#FFE34D',
       stroke: '#C0392B', strokeThickness: 7
     }).setOrigin(0.5).setShadow(0, 4, 'rgba(0,0,0,0.35)', 5)
 
-    this.add.text(cx, 70, pt
-      ? 'Cada uma tem salto, velocidade e vidas diferentes — escolhe o teu estilo!'
-      : 'Each one has different jump, speed and lives — pick your style!', {
+    this.add.text(cx, 70, t.chooseHint, {
       fontSize: '13px', fill: '#ffffff', stroke: '#1B3A6B', strokeThickness: 3
     }).setOrigin(0.5)
 
     const centers = [cx - 276, cx - 92, cx + 92, cx + 276]
-    SKINS.forEach((skin, i) => this.drawCard(skin, i, centers[i], pt))
+    SKINS.forEach((skin, i) => this.drawCard(skin, i, centers[i], t))
 
-    this.makeButton(cx, 476, pt ? '◀  Voltar' : '◀  Back', {
+    this.makeButton(cx, 476, `◀  ${t.back}`, {
       width: 150, height: 34, fontSize: 17,
       color: 0xE0392B, hover: 0xF0564A, border: 0xA81F14,
       onClick: () => this.scene.start('MenuScene')
     })
   }
 
-  drawCard(skin, i, centerX, pt) {
+  drawCard(skin, i, centerX, t) {
     const T        = 92
     const CW       = 168
     const CH       = 332
@@ -52,27 +50,27 @@ export class CharacterScene extends Phaser.Scene {
     drawBg(selected ? 0x2c3e66 : 0x223052, selected ? 0xFFD24A : 0x3f5488)
 
     if (selected) {
-      this.add.text(centerX, T + 14, pt ? '★ SELECIONADO' : '★ SELECTED', {
+      this.add.text(centerX, T + 14, `★ ${t.selected}`, {
         fontSize: '12px', fontStyle: 'bold', fill: '#FFD24A'
       }).setOrigin(0.5)
     }
 
     this.drawSkinPreview(i, centerX, T + 66)
 
-    this.add.text(centerX, T + 108, pt ? skin.label_pt : skin.label_en, {
+    this.add.text(centerX, T + 108, charText(skin, 'label'), {
       fontSize: '20px', fontStyle: 'bold', fill: '#ffffff',
       stroke: '#000000', strokeThickness: 3
     }).setOrigin(0.5)
 
-    this.add.text(centerX, T + 130, pt ? skin.role_pt : skin.role_en, {
+    this.add.text(centerX, T + 130, charText(skin, 'role'), {
       fontSize: '14px', fontStyle: 'bold', fill: '#FFD24A'
     }).setOrigin(0.5)
 
     const barL = left + 14
     const barR = left + CW - 14
-    this.drawStatBar(barL, barR, T + 168, pt ? 'Salto'      : 'Jump',  skin.jump,  STAT_RANGES.jump,  0x3CB043)
-    this.drawStatBar(barL, barR, T + 210, pt ? 'Velocidade' : 'Speed', skin.speed, STAT_RANGES.speed, 0x2E86DE)
-    this.drawStatBar(barL, barR, T + 252, pt ? 'Vidas'      : 'Lives', skin.lives, STAT_RANGES.lives, 0xE0556B)
+    this.drawStatBar(barL, barR, T + 168, t.jump,  skin.jump,  STAT_RANGES.jump,  0x3CB043)
+    this.drawStatBar(barL, barR, T + 210, t.speed, skin.speed, STAT_RANGES.speed, 0x2E86DE)
+    this.drawStatBar(barL, barR, T + 252, t.lives, skin.lives, STAT_RANGES.lives, 0xE0556B)
 
     this.add.text(barR, T + 252 - 14, `${skin.lives} ❤️`, {
       fontSize: '12px', fill: '#ffffff'

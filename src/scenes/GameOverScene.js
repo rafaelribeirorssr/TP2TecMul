@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import { getLang, getCurrentLang, getActiveSkinIndex } from './MenuScene.js'
+import { getLang, getActiveSkinIndex } from './MenuScene.js'
 import { formatTime } from './GameScene.js'
 import { SKINS, SPRITE_FRAMES } from '../assetConfig.js'
 import { audio } from '../audio.js'
@@ -55,7 +55,7 @@ export class GameOverScene extends Phaser.Scene {
       }).setOrigin(0.5)
     }
 
-    const playLabel = getCurrentLang() === 'pt' ? '↻  Jogar de novo' : '↻  Play again'
+    const playLabel = `↻  ${t.playAgain}`
     const menuLabel = t.backToMenu
 
     this.makeButton(cx, 362, playLabel, {

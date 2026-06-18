@@ -1,10 +1,11 @@
 import Phaser from 'phaser'
 import pt from '../locales/pt.json'
 import en from '../locales/en.json'
+import zh from '../locales/zh.json'
 import { SKINS, SPRITE_FRAMES } from '../assetConfig.js'
 import { audio } from '../audio.js'
 
-const langs = { pt, en }
+const langs = { pt, en, zh }
 let currentLang = 'pt'
 let activeSkinIndex = 0
 
@@ -14,6 +15,8 @@ export function getActiveSkinIndex()  { return activeSkinIndex }
 export function setActiveSkinIndex(i) { activeSkinIndex = i }
 export function getActiveCharacter()  { return SKINS[activeSkinIndex] }
 export function getCurrentLang()      { return currentLang }
+// localized character field (e.g. 'label' / 'role'); falls back to English
+export function charText(skin, base)  { return skin[`${base}_${currentLang}`] ?? skin[`${base}_en`] }
 
 export class MenuScene extends Phaser.Scene {
   constructor() { super('MenuScene') }
@@ -31,15 +34,7 @@ export class MenuScene extends Phaser.Scene {
     this.input.once('pointerdown', () => audio.init())
     this.input.keyboard.once('keydown', () => audio.init())
 
-    const soundBtn = this.makeButton(w - 34, 26, audio.muted ? '🔇' : '🔊', {
-      width: 46, height: 38, fontSize: 20,
-      color: 0x57606F, hover: 0x747D8C, border: 0x3C4453,
-      onClick: () => {
-        const muted = audio.toggleMute()
-        const txt = soundBtn.list.find(c => c.type === 'Text')
-        if (txt) txt.setText(muted ? '🔇' : '🔊')
-      }
-    })
+    this.makeSoundButton(w - 36, 36)
 
     this.add.text(cx, 52, t.title, {
       fontSize: '46px', fontStyle: 'bold', fill: '#FFE34D',
@@ -52,8 +47,7 @@ export class MenuScene extends Phaser.Scene {
       onClick: () => this.scene.start('GameScene', { level: 0 })
     })
 
-    const selectLabel = currentLang === 'pt' ? 'Escolher nível' : 'Select level'
-    this.add.text(cx, 168, selectLabel, {
+    this.add.text(cx, 168, t.selectLevel, {
       fontSize: '15px', fontStyle: 'bold', fill: '#ffffff',
       stroke: '#1B3A6B', strokeThickness: 3
     }).setOrigin(0.5)
@@ -67,15 +61,14 @@ export class MenuScene extends Phaser.Scene {
       })
     }
 
-    const skinLabel = currentLang === 'pt' ? 'Personagem' : 'Character'
-    this.add.text(cx, 250, skinLabel, {
+    this.add.text(cx, 250, t.character, {
       fontSize: '15px', fontStyle: 'bold', fill: '#ffffff',
       stroke: '#1B3A6B', strokeThickness: 3
     }).setOrigin(0.5)
 
     const ch     = SKINS[activeSkinIndex]
-    const chName = currentLang === 'pt' ? ch.label_pt : ch.label_en
-    const chRole = currentLang === 'pt' ? ch.role_pt  : ch.role_en
+    const chName = charText(ch, 'label')
+    const chRole = charText(ch, 'role')
     this.makeButton(cx, 286, `👤  ${chName} — ${chRole}`, {
       width: 250, height: 40, fontSize: 18,
       color: 0xF5A623, hover: 0xFFB733, border: 0xC77F12,
@@ -89,23 +82,25 @@ export class MenuScene extends Phaser.Scene {
       stroke: '#1B3A6B', strokeThickness: 3
     }).setOrigin(0.5)
 
-    this.makeButton(cx - 52, 402, '🇵🇹 PT', {
-      width: 80, height: 32, fontSize: 16,
-      color:  currentLang === 'pt' ? 0xF5A623 : 0x57606F,
-      hover:  currentLang === 'pt' ? 0xFFB733 : 0x747D8C,
-      border: currentLang === 'pt' ? 0xC77F12 : 0x3C4453,
-      onClick: () => { setLang('pt'); this.scene.restart() }
-    })
-    this.makeButton(cx + 52, 402, '🇬🇧 EN', {
-      width: 80, height: 32, fontSize: 16,
-      color:  currentLang === 'en' ? 0xF5A623 : 0x57606F,
-      hover:  currentLang === 'en' ? 0xFFB733 : 0x747D8C,
-      border: currentLang === 'en' ? 0xC77F12 : 0x3C4453,
-      onClick: () => { setLang('en'); this.scene.restart() }
+    const langButtons = [
+      { code: 'pt', label: '🇵🇹 PT' },
+      { code: 'en', label: '🇬🇧 EN' },
+      { code: 'zh', label: '🇨🇳 中文' },
+    ]
+    const langW = 92, langGap = 8, step = langW + langGap
+    const startX = cx - step * (langButtons.length - 1) / 2
+    langButtons.forEach(({ code, label }, idx) => {
+      const active = currentLang === code
+      this.makeButton(startX + idx * step, 402, label, {
+        width: langW, fixedWidth: true, height: 32, fontSize: 16,
+        color:  active ? 0xF5A623 : 0x57606F,
+        hover:  active ? 0xFFB733 : 0x747D8C,
+        border: active ? 0xC77F12 : 0x3C4453,
+        onClick: () => { setLang(code); this.scene.restart() }
+      })
     })
 
-    const quitLabel = currentLang === 'pt' ? '✕  Sair' : '✕  Quit'
-    this.makeButton(cx, 450, quitLabel, {
+    this.makeButton(cx, 450, `✕  ${t.quit}`, {
       width: 130, height: 38, fontSize: 19,
       color: 0xE0392B, hover: 0xF0564A, border: 0xA81F14,
       onClick: () => this.quitGame()
@@ -160,6 +155,64 @@ export class MenuScene extends Phaser.Scene {
     g.fillRect(x - 4 * s, y + 2 * s, 60 * s, 18 * s)
   }
 
+  makeSoundButton(x, y) {
+    const r = 24
+    const container = this.add.container(x, y)
+
+    const palette = {
+      on:  { fill: 0xF5A623, hover: 0xFFB733, border: 0xC77F12 },
+      off: { fill: 0x57606F, hover: 0x747D8C, border: 0x3C4453 }
+    }
+
+    const shadow = this.add.graphics()
+    shadow.fillStyle(0x000000, 0.22)
+    shadow.fillCircle(0, 4, r)
+
+    const bg = this.add.graphics()
+    const icon = this.add.text(0, 0, audio.muted ? '🔇' : '🔊', {
+      fontSize: '22px'
+    }).setOrigin(0.5)
+
+    const draw = (hovered) => {
+      const c = audio.muted ? palette.off : palette.on
+      bg.clear()
+      bg.fillStyle(hovered ? c.hover : c.fill, 1)
+      bg.fillCircle(0, 0, r)
+      bg.lineStyle(3, c.border, 1)
+      bg.strokeCircle(0, 0, r)
+      // glossy highlight on the top half
+      bg.fillStyle(0xffffff, 0.22)
+      bg.slice(0, 0, r - 3, Phaser.Math.DegToRad(200), Phaser.Math.DegToRad(340), false)
+      bg.fillPath()
+    }
+    draw(false)
+
+    container.add([shadow, bg, icon])
+    container.setSize(r * 2, r * 2)
+    container.setInteractive(
+      new Phaser.Geom.Circle(0, 0, r),
+      Phaser.Geom.Circle.Contains,
+      { useHandCursor: true }
+    )
+
+    const scaleTo = (s) => {
+      this.tweens.killTweensOf(container)
+      this.tweens.add({ targets: container, scale: s, duration: 80, ease: 'Quad.out' })
+    }
+
+    container.on('pointerover', () => { draw(true);  scaleTo(1.08) })
+    container.on('pointerout',  () => { draw(false); scaleTo(1) })
+    container.on('pointerdown', () => {
+      const muted = audio.toggleMute()
+      icon.setText(muted ? '🔇' : '🔊')
+      draw(true)
+      this.tweens.killTweensOf(container)
+      this.tweens.add({ targets: container, scale: 0.9, duration: 70, yoyo: true })
+    })
+
+    return container
+  }
+
   makeButton(x, y, label, opts) {
     const { height, fontSize, color, hover, border, onClick } = opts
     const container = this.add.container(x, y)
@@ -169,7 +222,8 @@ export class MenuScene extends Phaser.Scene {
       stroke: '#000000', strokeThickness: 3
     }).setOrigin(0.5)
 
-    const width = Math.max(opts.width, Math.ceil(text.width) + 36)
+    // fixedWidth keeps every button the same size (no auto-grow to fit the label)
+    const width = opts.fixedWidth ? opts.width : Math.max(opts.width, Math.ceil(text.width) + 36)
 
     const shadow = this.add.graphics()
     shadow.fillStyle(0x000000, 0.22)
@@ -215,9 +269,7 @@ export class MenuScene extends Phaser.Scene {
   }
 
   quitGame() {
-    const msg = currentLang === 'pt'
-      ? 'Obrigado por jogar! Já podes fechar este separador.'
-      : 'Thanks for playing! You can close this tab now.'
+    const msg = getLang().quitMessage
 
     window.close()
 

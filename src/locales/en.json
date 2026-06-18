@@ -15,5 +15,18 @@
   "paused": "Paused",
   "resume": "Resume",
   "restartLevel": "Restart level",
-  "backToMenu": "Main menu"
+  "backToMenu": "Main menu",
+  "selectLevel": "Select level",
+  "character": "Character",
+  "quit": "Quit",
+  "quitMessage": "Thanks for playing! You can close this tab now.",
+  "chooseCharacter": "Choose your character",
+  "chooseHint": "Each one has different jump, speed and lives — pick your style!",
+  "selected": "SELECTED",
+  "back": "Back",
+  "jump": "Jump",
+  "speed": "Speed",
+  "playAgain": "Play again",
+  "soundOn": "Sound: On",
+  "soundOff": "Sound: Off"
 }

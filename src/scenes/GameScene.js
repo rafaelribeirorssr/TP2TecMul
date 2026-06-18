@@ -1,6 +1,6 @@
 import Phaser from 'phaser'
 import { getLang, getActiveSkinIndex, getActiveCharacter } from './MenuScene.js'
-import { BG_LAYERS, SKINS, SPRITE_FRAMES } from '../assetConfig.js'
+import { BG_LAYERS, SKINS, SPRITE_FRAMES, ENEMY_SKINS } from '../assetConfig.js'
 import { audio } from '../audio.js'
 
 export function formatTime(ms) {
@@ -503,9 +503,12 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.collider(this.enemyGroup, this.fallingPlatforms)
 
     const doorPlat = lvl.platforms.find(p => Math.abs(p.x - lvl.doorX) <= p.w / 2)
+    // center the door on its platform so it sits squarely on top instead of
+    // hanging off the edge; fall back to doorX if no platform is found
+    const doorX    = doorPlat ? doorPlat.x : lvl.doorX
     const doorTop  = doorPlat ? doorPlat.y - 10 : (lvl.lavaDeath ? 250 : H - 48)
     const doorY    = doorTop - 45
-    this.door = this.physics.add.staticSprite(lvl.doorX, doorY, 'door')
+    this.door = this.physics.add.staticSprite(doorX, doorY, 'door')
     this.door.setDepth(3)
     this.physics.add.overlap(this.player, this.door, this.enterDoor, null, this)
 
@@ -933,8 +936,19 @@ export class GameScene extends Phaser.Scene {
 
   createEnemy(cfg, speed) {
     const type   = cfg.type || 'walker'
-    const texKey = { flyer: 'enemy_flyer', jumper: 'enemy_jumper', chaser: 'enemy_chaser' }[type] || 'enemy'
+    const skin   = ENEMY_SKINS[type]
+    const useImg = skin && this.textures.exists(skin.key)
+    // fall back to the procedurally drawn blobs if a skin image is missing
+    const texKey = useImg
+      ? skin.key
+      : ({ flyer: 'enemy_flyer', jumper: 'enemy_jumper', chaser: 'enemy_chaser' }[type] || 'enemy')
     const enemy  = this.physics.add.sprite(cfg.x, cfg.y, texKey)
+
+    if (useImg) {
+      // scale uniformly to the target height; the Arcade body scales with it
+      enemy.setScale(skin.dispH / enemy.height)
+    }
+
     enemy.setCollideWorldBounds(true)
     enemy.setDepth(4)
     enemy.direction = 1
@@ -946,6 +960,20 @@ export class GameScene extends Phaser.Scene {
     enemy.nextJump  = 0
 
     if (type === 'flyer') enemy.body.setAllowGravity(false)
+
+    // play the Koopa's walk cycle so it actually takes steps instead of sliding
+    if (useImg && skin.sheet) {
+      const animKey = `${skin.key}_walk`
+      if (!this.anims.exists(animKey)) {
+        this.anims.create({
+          key: animKey,
+          frames: this.anims.generateFrameNumbers(skin.key, { start: 0, end: skin.sheet.frames - 1 }),
+          frameRate: skin.sheet.rate,
+          repeat: -1,
+        })
+      }
+      enemy.play(animKey)
+    }
 
     enemy.body.setVelocityX(speed)
 

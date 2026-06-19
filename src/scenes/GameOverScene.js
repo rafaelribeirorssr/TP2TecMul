@@ -1,6 +1,6 @@
 import Phaser from 'phaser'
 import { getLang, getActiveSkinIndex } from './MenuScene.js'
-import { formatTime } from './GameScene.js'
+import { formatTime } from '../utils/format.js'
 import { SKINS, SPRITE_FRAMES } from '../assetConfig.js'
 import { audio } from '../audio.js'
 
